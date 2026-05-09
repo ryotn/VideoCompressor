@@ -364,9 +364,9 @@ class VideoTranscoder(
     private fun computeTargetDimensions(srcW: Int, srcH: Int): Pair<Int, Int> {
         return when (options.resolutionMode) {
             ResolutionMode.PERCENTAGE -> {
-                val p = options.resolutionPercentage
-                val w = makeEven((srcW * p / 100).coerceAtLeast(2))
-                val h = makeEven((srcH * p / 100).coerceAtLeast(2))
+                val scale = options.resolutionPercentage / 100f
+                val w = makeEven((srcW * scale).toInt().coerceAtLeast(2))
+                val h = makeEven((srcH * scale).toInt().coerceAtLeast(2))
                 Pair(w, h)
             }
             ResolutionMode.DIRECT -> fitDimensions(srcW, srcH, options.resolutionDirectWidth, options.resolutionDirectHeight)
@@ -376,7 +376,8 @@ class VideoTranscoder(
 
     private fun fitDimensions(srcW: Int, srcH: Int, maxW: Int, maxH: Int): Pair<Int, Int> {
         if (srcW <= 0 || srcH <= 0) return Pair(maxW, maxH)
-        val scale = minOf(maxW.toFloat() / srcW, maxH.toFloat() / srcH)
+        // Clamp scale to 1.0 so the video is never upscaled.
+        val scale = minOf(1.0f, maxW.toFloat() / srcW, maxH.toFloat() / srcH)
         val w = makeEven((srcW * scale).toInt().coerceAtLeast(2))
         val h = makeEven((srcH * scale).toInt().coerceAtLeast(2))
         return Pair(w, h)

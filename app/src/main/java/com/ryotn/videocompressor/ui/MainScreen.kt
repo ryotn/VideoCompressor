@@ -111,6 +111,7 @@ fun MainScreen(
             ScreenStep.Options -> {
                 CompressionOptionsContent(
                     options = options,
+                    videoInfo = videoInfo,
                     viewModel = viewModel
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -236,6 +237,7 @@ private fun SelectionStepContent(
 @Composable
 private fun CompressionOptionsContent(
     options: CompressionOptions,
+    videoInfo: VideoInfo?,
     viewModel: MainViewModel
 ) {
     Text(stringResource(R.string.compression_options), style = MaterialTheme.typography.titleMedium)
@@ -442,6 +444,9 @@ private fun CompressionOptionsContent(
                 valueRange = 10f..100f,
                 steps = 17
             )
+            computeOutputDimensions(options, videoInfo)?.let { (w, h) ->
+                Text("出力解像度: ${w}×${h}", style = MaterialTheme.typography.bodySmall)
+            }
         }
         ResolutionMode.DIRECT -> {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -450,7 +455,7 @@ private fun CompressionOptionsContent(
                     onValueChange = { v ->
                         v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(resolutionDirectWidth = it)) }
                     },
-                    label = { Text("幅") },
+                    label = { Text("幅（上限）") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
@@ -459,22 +464,25 @@ private fun CompressionOptionsContent(
                     onValueChange = { v ->
                         v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(resolutionDirectHeight = it)) }
                     },
-                    label = { Text("高さ") },
+                    label = { Text("高さ（上限）") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
+            }
+            computeOutputDimensions(options, videoInfo)?.let { (w, h) ->
+                Text("出力解像度: ${w}×${h}", style = MaterialTheme.typography.bodySmall)
             }
         }
         ResolutionMode.PRESET -> {
             var expanded by remember { mutableStateOf(false) }
             Box {
                 OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(options.resolutionPreset.labelJa)
+                    Text(formatResolutionPresetLabel(options.resolutionPreset, videoInfo))
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     ResolutionPreset.entries.forEach { preset ->
                         DropdownMenuItem(
-                            text = { Text(preset.labelJa) },
+                            text = { Text(formatResolutionPresetLabel(preset, videoInfo)) },
                             onClick = {
                                 viewModel.updateOptions(options.copy(resolutionPreset = preset))
                                 expanded = false
@@ -486,6 +494,47 @@ private fun CompressionOptionsContent(
         }
     }
 }
+
+private fun formatResolutionPresetLabel(preset: ResolutionPreset, videoInfo: VideoInfo?): String {
+    val baseLabel = preset.labelJa.substringBefore(" (")
+    val (width, height) = computePresetDisplayDimensions(preset, videoInfo)
+    return "$baseLabel (${width}×${height})"
+}
+
+private fun computePresetDisplayDimensions(preset: ResolutionPreset, videoInfo: VideoInfo?): Pair<Int, Int> {
+    val srcW = videoInfo?.width ?: return preset.width to preset.height
+    val srcH = videoInfo.height
+    if (srcW <= 0 || srcH <= 0) return preset.width to preset.height
+
+    // Clamp scale to 1.0 so the video is never upscaled.
+    val scale = minOf(1.0f, preset.width.toFloat() / srcW, preset.height.toFloat() / srcH)
+    val width = makeEven((srcW * scale).toInt().coerceAtLeast(2))
+    val height = makeEven((srcH * scale).toInt().coerceAtLeast(2))
+    return width to height
+}
+
+/** Computes the actual output dimensions for the current resolution settings, mirroring VideoTranscoder logic. */
+private fun computeOutputDimensions(options: CompressionOptions, videoInfo: VideoInfo?): Pair<Int, Int>? {
+    val srcW = videoInfo?.width?.takeIf { it > 0 } ?: return null
+    val srcH = videoInfo.height.takeIf { it > 0 } ?: return null
+    return when (options.resolutionMode) {
+        ResolutionMode.PERCENTAGE -> {
+            val scale = options.resolutionPercentage / 100f
+            makeEven((srcW * scale).toInt().coerceAtLeast(2)) to makeEven((srcH * scale).toInt().coerceAtLeast(2))
+        }
+        ResolutionMode.DIRECT -> {
+            val scale = minOf(1.0f, options.resolutionDirectWidth.toFloat() / srcW, options.resolutionDirectHeight.toFloat() / srcH)
+            makeEven((srcW * scale).toInt().coerceAtLeast(2)) to makeEven((srcH * scale).toInt().coerceAtLeast(2))
+        }
+        ResolutionMode.PRESET -> {
+            val preset = options.resolutionPreset
+            val scale = minOf(1.0f, preset.width.toFloat() / srcW, preset.height.toFloat() / srcH)
+            makeEven((srcW * scale).toInt().coerceAtLeast(2)) to makeEven((srcH * scale).toInt().coerceAtLeast(2))
+        }
+    }
+}
+
+private fun makeEven(value: Int): Int = if (value % 2 == 0) value else value - 1
 
 @Composable
 private fun ProgressStepContent(
