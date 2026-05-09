@@ -26,4 +26,7 @@
     <string name="change_save_directory">保存先を変更</string>
     <string name="save_directory_not_selected">保存先フォルダが選択されていません</string>
     <string name="save_directory_required">圧縮前に保存先フォルダを選択してください</string>
+    <string name="keep_aspect_ratio">アスペクト比を固定する</string>
+    <string name="width">幅</string>
+    <string name="height">高さ</string>
 </resources>

@@ -456,7 +456,7 @@ private fun CompressionOptionsContent(
                             viewModel.updateOptions(options.copy(resolutionKeepAspectRatio = checked))
                         }
                     )
-                    Text("アスペクト比を固定する")
+                    Text(stringResource(R.string.keep_aspect_ratio))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -470,7 +470,7 @@ private fun CompressionOptionsContent(
                                 viewModel.updateOptions(options.copy(resolutionDirectWidth = newWidth))
                             }
                         },
-                        label = { Text("幅") },
+                        label = { Text(stringResource(R.string.width)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f)
                     )
@@ -485,7 +485,7 @@ private fun CompressionOptionsContent(
                                 viewModel.updateOptions(options.copy(resolutionDirectHeight = newHeight))
                             }
                         },
-                        label = { Text("高さ") },
+                        label = { Text(stringResource(R.string.height)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f)
                     )
