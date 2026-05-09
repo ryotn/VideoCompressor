@@ -152,7 +152,7 @@ class VideoTranscoder(
             val sourceFrameRate = if (videoInputFormat.containsKey(MediaFormat.KEY_FRAME_RATE))
                 videoInputFormat.getInteger(MediaFormat.KEY_FRAME_RATE) else 30
 
-            val (targetW, targetH) = computeTargetDimensions(srcWidth, srcHeight)
+            val (targetW, targetH) = computeTargetDimensions(srcWidth, srcHeight, rotation)
             val targetBitrateBps = computeTargetBitrateBps().coerceAtLeast(MIN_BITRATE_BPS)
             val targetFrameRateFps = computeTargetFrameRateFps(sourceFrameRate).coerceAtLeast(1)
             val targetAudioBitrateBps = computeTargetAudioBitrateBps().coerceAtLeast(MIN_AUDIO_BITRATE_BPS)
@@ -361,7 +361,7 @@ class VideoTranscoder(
     // Target dimension / bitrate helpers
     // ------------------------------------------------------------------------------------------
 
-    private fun computeTargetDimensions(srcW: Int, srcH: Int): Pair<Int, Int> {
+    private fun computeTargetDimensions(srcW: Int, srcH: Int, rotation: Int): Pair<Int, Int> {
         return when (options.resolutionMode) {
             ResolutionMode.PERCENTAGE -> {
                 val p = options.resolutionPercentage
@@ -370,8 +370,17 @@ class VideoTranscoder(
                 Pair(w, h)
             }
             ResolutionMode.DIRECT -> {
-                val w = makeEven(options.resolutionDirectWidth.coerceAtLeast(2))
-                val h = makeEven(options.resolutionDirectHeight.coerceAtLeast(2))
+                var logicalW = options.resolutionDirectWidth.coerceAtLeast(2)
+                var logicalH = options.resolutionDirectHeight.coerceAtLeast(2)
+
+                if (rotation == 90 || rotation == 270) {
+                    val temp = logicalW
+                    logicalW = logicalH
+                    logicalH = temp
+                }
+
+                val w = makeEven(logicalW)
+                val h = makeEven(logicalH)
                 Pair(w, h)
             }
             ResolutionMode.PRESET -> {
