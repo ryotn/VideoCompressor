@@ -13,11 +13,38 @@ enum class BitratePreset(val labelJa: String, val kbps: Int) {
     VERY_HIGH("最高品質 (6,000 kbps)", 6000)
 }
 
-enum class ResolutionPreset(val labelJa: String, val width: Int, val height: Int) {
-    SD("SD (854×480)", 854, 480),
-    HD("HD (1280×720)", 1280, 720),
-    FHD("FHD (1920×1080)", 1920, 1080),
-    QHD("QHD (2560×1440)", 2560, 1440)
+enum class ResolutionPreset(val baseNameJa: String, val shortSide: Int) {
+    SD("SD", 480),
+    HD("HD", 720),
+    FHD("FHD", 1080),
+    QHD("QHD", 1440);
+
+    fun getDimensions(srcW: Int, srcH: Int): Pair<Int, Int> {
+        if (srcW <= 0 || srcH <= 0) {
+            // Fallback for 16:9 if original dimensions are invalid
+            val longSide = (shortSide * 16.0 / 9.0).toInt()
+            return Pair(longSide, shortSide)
+        }
+        val isLandscape = srcW >= srcH
+        val originalLongSide = if (isLandscape) srcW else srcH
+        val originalShortSide = if (isLandscape) srcH else srcW
+
+        val calculatedLongSide = (originalLongSide * (shortSide.toFloat() / originalShortSide)).toInt()
+
+        val w = if (isLandscape) calculatedLongSide else shortSide
+        val h = if (isLandscape) shortSide else calculatedLongSide
+
+        // Ensure even dimensions
+        val evenW = w / 2 * 2
+        val evenH = h / 2 * 2
+
+        return Pair(evenW, evenH)
+    }
+
+    fun getLabelJa(srcW: Int, srcH: Int): String {
+        val (w, h) = getDimensions(srcW, srcH)
+        return "$baseNameJa (${w}×${h})"
+    }
 }
 
 enum class FrameRatePreset(val labelJa: String, val fps: Int) {
@@ -47,6 +74,7 @@ data class CompressionOptions(
     val frameRatePreset: FrameRatePreset = FrameRatePreset.STANDARD,
     val resolutionMode: ResolutionMode = ResolutionMode.PRESET,
     val resolutionPercentage: Int = 100,
+    val resolutionKeepAspectRatio: Boolean = true,
     val resolutionDirectWidth: Int = 1280,
     val resolutionDirectHeight: Int = 720,
     val resolutionPreset: ResolutionPreset = ResolutionPreset.HD

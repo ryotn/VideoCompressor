@@ -369,17 +369,16 @@ class VideoTranscoder(
                 val h = makeEven((srcH * p / 100).coerceAtLeast(2))
                 Pair(w, h)
             }
-            ResolutionMode.DIRECT -> fitDimensions(srcW, srcH, options.resolutionDirectWidth, options.resolutionDirectHeight)
-            ResolutionMode.PRESET -> fitDimensions(srcW, srcH, options.resolutionPreset.width, options.resolutionPreset.height)
+            ResolutionMode.DIRECT -> {
+                val w = makeEven(options.resolutionDirectWidth.coerceAtLeast(2))
+                val h = makeEven(options.resolutionDirectHeight.coerceAtLeast(2))
+                Pair(w, h)
+            }
+            ResolutionMode.PRESET -> {
+                val (w, h) = options.resolutionPreset.getDimensions(srcW, srcH)
+                Pair(makeEven(w.coerceAtLeast(2)), makeEven(h.coerceAtLeast(2)))
+            }
         }
-    }
-
-    private fun fitDimensions(srcW: Int, srcH: Int, maxW: Int, maxH: Int): Pair<Int, Int> {
-        if (srcW <= 0 || srcH <= 0) return Pair(maxW, maxH)
-        val scale = minOf(maxW.toFloat() / srcW, maxH.toFloat() / srcH)
-        val w = makeEven((srcW * scale).toInt().coerceAtLeast(2))
-        val h = makeEven((srcH * scale).toInt().coerceAtLeast(2))
-        return Pair(w, h)
     }
 
     /** Returns [value] rounded down to the nearest even number (required by H.264 encoder). */

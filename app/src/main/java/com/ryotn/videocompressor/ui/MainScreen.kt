@@ -22,6 +22,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -111,7 +113,8 @@ fun MainScreen(
             ScreenStep.Options -> {
                 CompressionOptionsContent(
                     options = options,
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    videoInfo = videoInfo
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
@@ -236,7 +239,8 @@ private fun SelectionStepContent(
 @Composable
 private fun CompressionOptionsContent(
     options: CompressionOptions,
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    videoInfo: VideoInfo?
 ) {
     Text(stringResource(R.string.compression_options), style = MaterialTheme.typography.titleMedium)
 
@@ -444,37 +448,60 @@ private fun CompressionOptionsContent(
             )
         }
         ResolutionMode.DIRECT -> {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = options.resolutionDirectWidth.toString(),
-                    onValueChange = { v ->
-                        v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(resolutionDirectWidth = it)) }
-                    },
-                    label = { Text("幅") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = options.resolutionDirectHeight.toString(),
-                    onValueChange = { v ->
-                        v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(resolutionDirectHeight = it)) }
-                    },
-                    label = { Text("高さ") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f)
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = options.resolutionKeepAspectRatio,
+                        onCheckedChange = { checked ->
+                            viewModel.updateOptions(options.copy(resolutionKeepAspectRatio = checked))
+                        }
+                    )
+                    Text("アスペクト比を固定する")
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = options.resolutionDirectWidth.toString(),
+                        onValueChange = { v ->
+                            val newWidth = v.toIntOrNull() ?: 0
+                            if (options.resolutionKeepAspectRatio && videoInfo != null && videoInfo.width > 0 && videoInfo.height > 0) {
+                                val newHeight = (newWidth.toFloat() * videoInfo.height / videoInfo.width).toInt()
+                                viewModel.updateOptions(options.copy(resolutionDirectWidth = newWidth, resolutionDirectHeight = newHeight))
+                            } else {
+                                viewModel.updateOptions(options.copy(resolutionDirectWidth = newWidth))
+                            }
+                        },
+                        label = { Text("幅") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = options.resolutionDirectHeight.toString(),
+                        onValueChange = { v ->
+                            val newHeight = v.toIntOrNull() ?: 0
+                            if (options.resolutionKeepAspectRatio && videoInfo != null && videoInfo.width > 0 && videoInfo.height > 0) {
+                                val newWidth = (newHeight.toFloat() * videoInfo.width / videoInfo.height).toInt()
+                                viewModel.updateOptions(options.copy(resolutionDirectWidth = newWidth, resolutionDirectHeight = newHeight))
+                            } else {
+                                viewModel.updateOptions(options.copy(resolutionDirectHeight = newHeight))
+                            }
+                        },
+                        label = { Text("高さ") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
         ResolutionMode.PRESET -> {
             var expanded by remember { mutableStateOf(false) }
             Box {
                 OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(options.resolutionPreset.labelJa)
+                    Text(options.resolutionPreset.getLabelJa(videoInfo?.width ?: 0, videoInfo?.height ?: 0))
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     ResolutionPreset.entries.forEach { preset ->
                         DropdownMenuItem(
-                            text = { Text(preset.labelJa) },
+                            text = { Text(preset.getLabelJa(videoInfo?.width ?: 0, videoInfo?.height ?: 0)) },
                             onClick = {
                                 viewModel.updateOptions(options.copy(resolutionPreset = preset))
                                 expanded = false
