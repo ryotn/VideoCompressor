@@ -1,0 +1,101 @@
+package com.ryotn.videocompressor
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ryotn.videocompressor.ui.MainScreen
+import com.ryotn.videocompressor.ui.theme.VideoCompressorTheme
+import com.ryotn.videocompressor.viewmodel.MainViewModel
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            VideoCompressorTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    val vm: MainViewModel = viewModel()
+
+                    var permissionsGranted by remember { mutableStateOf(false) }
+                    val saveDirectoryUri by vm.saveDirectoryUri.collectAsState()
+
+                    val permissionLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.RequestMultiplePermissions()
+                    ) { results ->
+                        permissionsGranted = results.values.all { it }
+                    }
+
+                    val videoPickerLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.GetContent()
+                    ) { uri ->
+                        uri?.let { vm.onVideoSelected(it) }
+                    }
+
+                    val saveDirectoryLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.OpenDocumentTree()
+                    ) { uri: Uri? ->
+                        uri?.let {
+                            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                            runCatching {
+                                contentResolver.takePersistableUriPermission(it, flags)
+                            }
+                            vm.updateSaveDirectory(it)
+                        }
+                    }
+
+                    LaunchedEffect(Unit) {
+                        val perms = buildList {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                add(Manifest.permission.READ_MEDIA_VIDEO)
+                                add(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                add(Manifest.permission.READ_EXTERNAL_STORAGE)
+                            }
+                        }
+                        val notGranted = perms.filter {
+                            ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
+                        }
+                        if (notGranted.isEmpty()) {
+                            permissionsGranted = true
+                        } else {
+                            permissionLauncher.launch(notGranted.toTypedArray())
+                        }
+                    }
+
+                    LaunchedEffect(permissionsGranted, saveDirectoryUri) {
+                        if (permissionsGranted && saveDirectoryUri == null) {
+                            saveDirectoryLauncher.launch(null)
+                        }
+                    }
+
+                    MainScreen(
+                        viewModel = vm,
+                        onSelectVideo = { videoPickerLauncher.launch("video/*") },
+                        onSelectSaveDirectory = { saveDirectoryLauncher.launch(saveDirectoryUri) }
+                    )
+                }
+            }
+        }
+    }
+}

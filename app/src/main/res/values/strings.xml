@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VideoCompressor</string>
+    <string name="select_video">動画を選択</string>
+    <string name="start_compression">圧縮開始</string>
+    <string name="cancel_compression">圧縮をキャンセル</string>
+    <string name="compression_options">圧縮オプション</string>
+    <string name="bitrate_options">ビットレート</string>
+    <string name="video_bitrate_options">動画ビットレート</string>
+    <string name="audio_bitrate_options">音声ビットレート</string>
+    <string name="resolution_options">解像度</string>
+    <string name="frame_rate_options">フレームレート</string>
+    <string name="percentage">%指定</string>
+    <string name="direct">直接指定</string>
+    <string name="preset">プリセット</string>
+    <string name="fps">fps</string>
+    <string name="kbps">kbps</string>
+    <string name="compression_progress">圧縮中...</string>
+    <string name="compression_complete">圧縮完了</string>
+    <string name="compression_failed">圧縮失敗</string>
+    <string name="notification_channel_name">動画圧縮</string>
+    <string name="notification_channel_description">動画圧縮の進捗を表示します</string>
+    <string name="no_video_selected">動画が選択されていません</string>
+    <string name="save_directory">保存先フォルダ</string>
+    <string name="select_save_directory">保存先を選択</string>
+    <string name="change_save_directory">保存先を変更</string>
+    <string name="save_directory_not_selected">保存先フォルダが選択されていません</string>
+    <string name="save_directory_required">圧縮前に保存先フォルダを選択してください</string>
+</resources>
