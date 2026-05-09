@@ -30,6 +30,9 @@ Android向けの動画圧縮アプリです。デバイス上の動画ファイ�
 リポジトリをクローンし、Android Studioで開くか、コマンドラインから以下のコマンドを実行してください。
 
 ```bash
+# 実行権限の付与（必要な場合）
+chmod +x gradlew
+
 # デバッグビルドの作成
 ./gradlew assembleDebug
 
