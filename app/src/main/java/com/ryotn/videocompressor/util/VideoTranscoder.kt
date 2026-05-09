@@ -74,11 +74,6 @@ class VideoTranscoder(
         private const val MIN_AUDIO_BITRATE_BPS = 32_000L
         /** Warn when codec bitrate clamping changes requested bitrate by more than ±20%. */
         private const val BITRATE_ADJUSTMENT_WARNING_THRESHOLD = 0.2
-        /**
-         * Many hardware AVC encoders ignore requested bitrates below ~4 Mbps even when their
-         * advertised capability range claims otherwise, so prefer software below this threshold.
-         */
-        private const val PREFER_SOFTWARE_BELOW_BITRATE_BPS = 4_000_000L
     }
 
     // EGL state
@@ -169,12 +164,16 @@ class VideoTranscoder(
             // ---- encoder ----
             val selectedEncoder = selectEncoder(targetBitrateBps, targetW, targetH)
             val encoderFormat = MediaFormat.createVideoFormat(VIDEO_MIME, targetW, targetH).apply {
-                setInteger(
-                    MediaFormat.KEY_BIT_RATE,
-                    selectedEncoder.appliedBitrateBps.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-                )
+                val bpsInt = selectedEncoder.appliedBitrateBps.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                setInteger(MediaFormat.KEY_BIT_RATE, bpsInt)
+
+                // Hardware encoders (like Qualcomm) enforce an internal heuristic minimum bitrate for 1080p
+                // which often resolves to ~4Mbps. Passing max-bitrate overrides this heuristic.
+                setInteger("max-bitrate", bpsInt)
+
                 setInteger(MediaFormat.KEY_FRAME_RATE, targetFrameRateFps)
-                setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
+                // Increasing I-frame interval prevents the encoder from starving for bits due to frequent keyframes.
+                setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 3)
                 setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
             }
             encoder = selectedEncoder.codec
@@ -435,114 +434,50 @@ class VideoTranscoder(
      *  3. The system default if nothing else works.
      */
     private fun selectEncoder(targetBitrateBps: Long, width: Int, height: Int): SelectedEncoder {
-        data class EncoderCandidate(
-            val info: MediaCodecInfo,
-            val bitrateMode: Int?,
-            val minBitrateBps: Int,
-            val maxBitrateBps: Int
-        )
+        // Find the first encoder that supports the requested resolution.
+        // MediaCodecList.REGULAR_CODECS naturally sorts hardware encoders first, which is preferred for performance.
+        val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+        for (info in codecList.codecInfos) {
+            if (!info.isEncoder) continue
+            if (!info.supportedTypes.any { it.equals(VIDEO_MIME, ignoreCase = true) }) continue
 
-        /**
-         * Returns the preferred bitrate mode supported by this encoder:
-         * CBR first, VBR as fallback, or null when neither mode is supported.
-         */
-        fun pickBitrateMode(caps: MediaCodecInfo.CodecCapabilities): Int? {
+            val caps = runCatching { info.getCapabilitiesForType(VIDEO_MIME) }.getOrNull() ?: continue
+            val videoCaps = caps.videoCapabilities ?: continue
+
+            // If the encoder doesn't support the size, skip it.
+            if (!videoCaps.isSizeSupported(width, height)) continue
+
             val encCaps = caps.encoderCapabilities
-            return when {
+            val bitrateMode = when {
                 encCaps.isBitrateModeSupported(MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR) ->
                     MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR
                 encCaps.isBitrateModeSupported(MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR) ->
                     MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR
                 else -> null
             }
-        }
 
-        // Many hardware encoders still ignore sub-4Mbps requests in practice, so prefer software.
-        val preferSoftware = targetBitrateBps < PREFER_SOFTWARE_BELOW_BITRATE_BPS
-        val targetBitrateInt = targetBitrateBps.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        val hardwareCandidates = mutableListOf<EncoderCandidate>()
-        val softwareCandidates = mutableListOf<EncoderCandidate>()
-
-        val codecList = MediaCodecList(MediaCodecList.ALL_CODECS)
-        for (info in codecList.codecInfos) {
-            if (!info.isEncoder) continue
-            if (!info.supportedTypes.any { it.equals(VIDEO_MIME, ignoreCase = true) }) continue
-
-            val caps = runCatching { info.getCapabilitiesForType(VIDEO_MIME) }.getOrNull() ?: continue
-
-            val videoCaps = caps.videoCapabilities ?: continue
-            if (!videoCaps.isSizeSupported(width, height)) continue
-
-            val isSoftware = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                info.isSoftwareOnly
-            } else {
-                info.name.startsWith("OMX.google", ignoreCase = true) ||
-                    info.name.startsWith("c2.android", ignoreCase = true)
-            }
-
-            val supportsTargetBitrate = videoCaps.bitrateRange.contains(targetBitrateInt)
-            // Accept when target bitrate is supported, or when software is explicitly preferred.
-            if (!supportsTargetBitrate && (!isSoftware || !preferSoftware)) continue
-
-            val candidate = EncoderCandidate(
-                info = info,
-                bitrateMode = pickBitrateMode(caps),
-                minBitrateBps = videoCaps.bitrateRange.lower,
-                maxBitrateBps = videoCaps.bitrateRange.upper
-            )
-            if (isSoftware) softwareCandidates.add(candidate) else hardwareCandidates.add(candidate)
-        }
-
-        val sortedSoftwareCandidates = softwareCandidates.sortedBy { candidate ->
-            val supportsTarget = targetBitrateInt in candidate.minBitrateBps..candidate.maxBitrateBps
-            if (supportsTarget) 0 else 1
-        }
-        val sortedHardwareCandidates = hardwareCandidates.sortedBy { candidate ->
-            val supportsTarget = targetBitrateInt in candidate.minBitrateBps..candidate.maxBitrateBps
-            if (supportsTarget) 0 else 1
-        }
-        val chosenCandidate = if (preferSoftware) {
-            sortedSoftwareCandidates.firstOrNull() ?: sortedHardwareCandidates.firstOrNull()
-        } else {
-            sortedHardwareCandidates.firstOrNull() ?: sortedSoftwareCandidates.firstOrNull()
-        }
-        return if (chosenCandidate != null) {
-            val appliedBitrateBps = targetBitrateBps
-                .coerceAtLeast(chosenCandidate.minBitrateBps.toLong())
-                .coerceAtMost(chosenCandidate.maxBitrateBps.toLong())
-            if (targetBitrateBps > 0L) {
-                val ratio = appliedBitrateBps.toDouble() / targetBitrateBps.toDouble()
-                val minRatio = 1.0 - BITRATE_ADJUSTMENT_WARNING_THRESHOLD
-                val maxRatio = 1.0 + BITRATE_ADJUSTMENT_WARNING_THRESHOLD
-                if (ratio < minRatio || ratio > maxRatio) {
-                    Log.w(
-                        TAG,
-                        "Requested bitrate ${targetBitrateBps}bps adjusted to ${appliedBitrateBps}bps for encoder ${chosenCandidate.info.name}"
-                    )
-                }
-            }
-            val bitrateModeLabel = when (chosenCandidate.bitrateMode) {
+            val bitrateModeLabel = when (bitrateMode) {
                 MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR -> "VBR"
                 MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR -> "CBR"
                 else -> "default"
             }
             Log.d(
                 TAG,
-                "Encoder: ${chosenCandidate.info.name}, bitrateTarget=${targetBitrateBps}bps, bitrateApplied=${appliedBitrateBps}bps, preferSoftware=$preferSoftware, bitrateMode=$bitrateModeLabel"
+                "Selected Encoder: ${info.name}, bitrateTarget=${targetBitrateBps}bps, bitrateMode=$bitrateModeLabel"
             )
-            SelectedEncoder(
-                codec = MediaCodec.createByCodecName(chosenCandidate.info.name),
-                bitrateMode = chosenCandidate.bitrateMode,
-                appliedBitrateBps = appliedBitrateBps
-            )
-        } else {
-            Log.w(TAG, "No encoder supporting ${targetBitrateBps}bps at ${width}x${height}, using default")
-            SelectedEncoder(
-                codec = MediaCodec.createEncoderByType(VIDEO_MIME),
-                bitrateMode = null,
+            return SelectedEncoder(
+                codec = MediaCodec.createByCodecName(info.name),
+                bitrateMode = bitrateMode,
                 appliedBitrateBps = targetBitrateBps
             )
         }
+
+        Log.w(TAG, "No encoder supporting ${width}x${height}, using default")
+        return SelectedEncoder(
+            codec = MediaCodec.createEncoderByType(VIDEO_MIME),
+            bitrateMode = null,
+            appliedBitrateBps = targetBitrateBps
+        )
     }
 
     private fun transcodeAudioTrack(targetAudioBitrateBps: Long): Pair<MediaFormat, List<EncodedAudioSample>>? {
