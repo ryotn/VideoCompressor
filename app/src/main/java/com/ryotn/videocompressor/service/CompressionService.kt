@@ -98,82 +98,82 @@ class CompressionService : Service() {
         originalAudioBitrate: Long
     ) {
         val thread = Thread {
-            val inputFile = File(cacheDir, "input_${System.currentTimeMillis()}.mp4")
-            val tempOutputFile = File(cacheDir, "compressed_${System.currentTimeMillis()}.mp4")
+            var inputFile: File? = null
+            var tempOutputFile: File? = null
 
-            // Copy source URI to a local temp file so MediaExtractor can read it
             try {
-                contentResolver.openInputStream(sourceUri)?.use { input ->
-                    FileOutputStream(inputFile).use { output ->
-                        input.copyTo(output)
+                inputFile = File.createTempFile("input_", ".mp4", cacheDir)
+                tempOutputFile = File.createTempFile("compressed_", ".mp4", cacheDir)
+
+                // Copy source URI to a local temp file so MediaExtractor can read it
+                try {
+                    contentResolver.openInputStream(sourceUri)?.use { input ->
+                        FileOutputStream(inputFile!!).use { output ->
+                            input.copyTo(output)
+                        }
+                    } ?: run {
+                        sendBroadcastMsg(BROADCAST_FAILED, mapOf(EXTRA_ERROR to "入力ファイルを開けませんでした"))
+                        return@Thread
                     }
-                } ?: run {
-                    sendBroadcastMsg(BROADCAST_FAILED, mapOf(EXTRA_ERROR to "入力ファイルを開けませんでした"))
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf()
+                } catch (e: Exception) {
+                    sendBroadcastMsg(BROADCAST_FAILED, mapOf(EXTRA_ERROR to "ファイルのコピーに失敗しました: ${e.message}"))
                     return@Thread
                 }
+
+                val t = VideoTranscoder(
+                    inputFile = inputFile!!,
+                    outputFile = tempOutputFile!!,
+                    options = options,
+                    originalBitrate = originalBitrate,
+                    originalAudioBitrate = originalAudioBitrate,
+                    durationUs = durationMs * 1000L,
+                    onProgress = { progress ->
+                        updateNotification(progress)
+                        val broadcastIntent = Intent(BROADCAST_PROGRESS).apply {
+                            putExtra(EXTRA_PROGRESS, progress)
+                        }
+                        LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
+                    }
+                )
+                transcoder = t
+
+                val success = try {
+                    t.transcode()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Unexpected transcoding error", e)
+                    false
+                }
+
+                when {
+                    t.isCancelled -> {
+                        sendBroadcastMsg(BROADCAST_CANCELLED, emptyMap())
+                    }
+                    success -> {
+                        val savedOutput = copyOutputToUserDirectory(sourceUri, outputDirectoryUri, tempOutputFile!!)
+                        if (savedOutput != null) {
+                            sendBroadcastMsg(
+                                BROADCAST_COMPLETE, mapOf(
+                                    EXTRA_OUTPUT_PATH to savedOutput.first,
+                                    EXTRA_OUTPUT_SIZE to savedOutput.second.toString()
+                                )
+                            )
+                        } else {
+                            sendBroadcastMsg(BROADCAST_FAILED, mapOf(EXTRA_ERROR to "保存先フォルダへの書き込みに失敗しました"))
+                        }
+                    }
+                    else -> {
+                        sendBroadcastMsg(BROADCAST_FAILED, mapOf(EXTRA_ERROR to "圧縮に失敗しました"))
+                    }
+                }
             } catch (e: Exception) {
-                sendBroadcastMsg(BROADCAST_FAILED, mapOf(EXTRA_ERROR to "ファイルのコピーに失敗しました: ${e.message}"))
+                Log.e(TAG, "Compression thread failed", e)
+                sendBroadcastMsg(BROADCAST_FAILED, mapOf(EXTRA_ERROR to "予期しないエラーが発生しました: ${e.message}"))
+            } finally {
+                inputFile?.delete()
+                tempOutputFile?.delete()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
-                return@Thread
             }
-
-            val t = VideoTranscoder(
-                inputFile = inputFile,
-                outputFile = tempOutputFile,
-                options = options,
-                originalBitrate = originalBitrate,
-                originalAudioBitrate = originalAudioBitrate,
-                durationUs = durationMs * 1000L,
-                onProgress = { progress ->
-                    updateNotification(progress)
-                    val broadcastIntent = Intent(BROADCAST_PROGRESS).apply {
-                        putExtra(EXTRA_PROGRESS, progress)
-                    }
-                    LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent)
-                }
-            )
-            transcoder = t
-
-            val success = try {
-                t.transcode()
-            } catch (e: Exception) {
-                Log.e(TAG, "Unexpected transcoding error", e)
-                false
-            } finally {
-                inputFile.delete()
-            }
-
-            when {
-                t.isCancelled -> {
-                    tempOutputFile.delete()
-                    sendBroadcastMsg(BROADCAST_CANCELLED, emptyMap())
-                }
-                success -> {
-                    val savedOutput = copyOutputToUserDirectory(sourceUri, outputDirectoryUri, tempOutputFile)
-                    if (savedOutput != null) {
-                        sendBroadcastMsg(
-                            BROADCAST_COMPLETE, mapOf(
-                                EXTRA_OUTPUT_PATH to savedOutput.first,
-                                EXTRA_OUTPUT_SIZE to savedOutput.second.toString()
-                            )
-                        )
-                    } else {
-                        sendBroadcastMsg(BROADCAST_FAILED, mapOf(EXTRA_ERROR to "保存先フォルダへの書き込みに失敗しました"))
-                    }
-                }
-                else -> {
-                    tempOutputFile.delete()
-                    sendBroadcastMsg(BROADCAST_FAILED, mapOf(EXTRA_ERROR to "圧縮に失敗しました"))
-                }
-            }
-
-            tempOutputFile.delete()
-
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
         }
         thread.name = "VideoCompressionThread"
         thread.start()
