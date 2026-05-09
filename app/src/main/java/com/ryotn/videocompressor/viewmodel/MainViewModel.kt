@@ -93,16 +93,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return try {
             val retriever = MediaMetadataRetriever()
             retriever.setDataSource(context, uri)
-            val displayName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                cursor.moveToFirst()
-                if (nameIndex >= 0) cursor.getString(nameIndex) else "video.mp4"
-            } ?: "video.mp4"
-            val sizeBytes = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
-                cursor.moveToFirst()
-                if (sizeIndex >= 0) cursor.getLong(sizeIndex) else 0L
-            } ?: 0L
+            var displayName = "video.mp4"
+            var sizeBytes = 0L
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex >= 0) {
+                        displayName = cursor.getString(nameIndex) ?: "video.mp4"
+                    }
+                    val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                    if (sizeIndex >= 0) {
+                        sizeBytes = cursor.getLong(sizeIndex)
+                    }
+                }
+            }
             val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
             val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
             val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
