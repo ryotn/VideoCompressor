@@ -17,7 +17,7 @@ Android向けの動画圧縮アプリです。デバイス上の動画ファイ�
 *   Kotlin
 *   Jetpack Compose (UI)
 *   Coroutines / Flow (非同期処理と状態管理)
-*   MediaCodec, MediaExtractor, MediaMuxer (動画変換処理)
+*   MediaCodec, MediaExtractor, MediaMuxer, OpenGL ES (動画変換・スケーリング処理)
 *   Storage Access Framework (ファイル入出力)
 
 ## 動作要件
