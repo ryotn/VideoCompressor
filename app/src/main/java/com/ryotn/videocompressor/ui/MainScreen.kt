@@ -82,6 +82,7 @@ fun MainScreen(
     var currentStep by rememberSaveable { mutableStateOf(ScreenStep.Selection) }
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
     var showCancelDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
     val activity = LocalContext.current as? Activity
 
     LaunchedEffect(state) {
@@ -99,7 +100,11 @@ fun MainScreen(
     BackHandler {
         when (currentStep) {
             ScreenStep.Options -> {
-                currentStep = ScreenStep.Selection
+                if (selectedTabIndex > 0) {
+                    selectedTabIndex--
+                } else {
+                    currentStep = ScreenStep.Selection
+                }
             }
             ScreenStep.Completed -> {
                 viewModel.resetState()
@@ -205,7 +210,6 @@ fun MainScreen(
                 // values whose toString() is always non-empty. LaunchedEffect keeps the parent
                 // state in sync whenever the user clears a direct-input field.
                 var isDirectInputValid by remember { mutableStateOf(true) }
-                var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
                 CompressionOptionsContent(
                     options = options,
                     videoInfo = videoInfo,
@@ -216,7 +220,13 @@ fun MainScreen(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
-                        onClick = { currentStep = ScreenStep.Selection },
+                        onClick = {
+                            if (selectedTabIndex > 0) {
+                                selectedTabIndex--
+                            } else {
+                                currentStep = ScreenStep.Selection
+                            }
+                        },
                         modifier = Modifier.weight(1f),
                         enabled = state !is CompressionState.InProgress && state !is CompressionState.Preparing
                     ) {
