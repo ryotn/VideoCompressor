@@ -6,7 +6,7 @@
     <string name="cancel_compression">圧縮をキャンセル</string>
     <string name="compression_options">圧縮オプション</string>
     <string name="codec_options">コーデック</string>
-    <string name="codec_same_as_original">元動画と同じ（できるのであれば）</string>
+    <string name="codec_same_as_original_suffix"> (元と同じ)</string>
     <string name="codec_h264">H.264(AVC)</string>
     <string name="codec_h265">H.265(HEVC)</string>
     <string name="codec_av1">AV1</string>

@@ -44,7 +44,6 @@ class CompressionService : Service() {
         const val EXTRA_OUTPUT_SIZE = "output_size"
         const val EXTRA_ERROR = "error"
         private const val NOTIFICATION_ID = 1001
-        const val COMPLETION_NOTIFICATION_ID = 1002
         private const val CHANNEL_ID = "compression_channel"
         private const val TAG = "CompressionService"
     }
@@ -73,7 +72,6 @@ class CompressionService : Service() {
                 val durationMs = intent.getLongExtra(EXTRA_DURATION_MS, 0L)
                 val originalBitrate = intent.getLongExtra(EXTRA_ORIGINAL_BITRATE, 0L)
                 val originalAudioBitrate = intent.getLongExtra(EXTRA_ORIGINAL_AUDIO_BITRATE, 0L)
-                val originalSize = intent.getLongExtra(EXTRA_ORIGINAL_SIZE, 0L)
                 val options = intent.getSerializableExtra(EXTRA_OPTIONS, CompressionOptions::class.java)
                     ?: CompressionOptions()
 
@@ -82,7 +80,7 @@ class CompressionService : Service() {
                     buildNotification(0f),
                     android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
                 )
-                startCompression(sourceUri, outputDirectoryUri, options, durationMs, originalBitrate, originalAudioBitrate, originalSize)
+                startCompression(sourceUri, outputDirectoryUri, options, durationMs, originalBitrate, originalAudioBitrate)
             }
             ACTION_CANCEL -> {
                 transcoder?.isCancelled = true
@@ -97,8 +95,7 @@ class CompressionService : Service() {
         options: CompressionOptions,
         durationMs: Long,
         originalBitrate: Long,
-        originalAudioBitrate: Long,
-        originalSize: Long
+        originalAudioBitrate: Long
     ) {
         val thread = Thread {
             var inputFile: File? = null
@@ -154,16 +151,12 @@ class CompressionService : Service() {
                     success -> {
                         val savedOutput = copyOutputToUserDirectory(sourceUri, outputDirectoryUri, tempOutputFile!!)
                         if (savedOutput != null) {
-                            val outputPath = savedOutput.first
-                            val outputSize = savedOutput.second
-
                             sendBroadcastMsg(
                                 BROADCAST_COMPLETE, mapOf(
-                                    EXTRA_OUTPUT_PATH to outputPath,
-                                    EXTRA_OUTPUT_SIZE to outputSize.toString()
+                                    EXTRA_OUTPUT_PATH to savedOutput.first,
+                                    EXTRA_OUTPUT_SIZE to savedOutput.second.toString()
                                 )
                             )
-                            showCompletionNotification(outputPath, originalSize, outputSize)
                         } else {
                             sendBroadcastMsg(BROADCAST_FAILED, mapOf(EXTRA_ERROR to "保存先フォルダへの書き込みに失敗しました"))
                         }
@@ -218,32 +211,6 @@ class CompressionService : Service() {
     private fun updateNotification(progress: Float) {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIFICATION_ID, buildNotification(progress))
-    }
-
-    private fun showCompletionNotification(outputPath: String, originalSize: Long, outputSize: Long) {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("show_completion", true)
-            putExtra(EXTRA_OUTPUT_PATH, outputPath)
-            putExtra(EXTRA_ORIGINAL_SIZE, originalSize)
-            putExtra(EXTRA_OUTPUT_SIZE, outputSize)
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this, 1,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.compression_complete))
-            .setContentText(getString(R.string.save_destination, outputPath))
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .build()
-
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(COMPLETION_NOTIFICATION_ID, notification)
     }
 
     private fun sendBroadcastMsg(action: String, extras: Map<String, String>) {
