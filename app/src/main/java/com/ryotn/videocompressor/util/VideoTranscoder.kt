@@ -205,6 +205,8 @@ class VideoTranscoder(
                 val normalizedRotation = ((rotation % 360) + 360) % 360
                 if (normalizedRotation == 90 || normalizedRotation == 180 || normalizedRotation == 270) {
                     setOrientationHint(normalizedRotation)
+                } else if (normalizedRotation != 0) {
+                    Log.w(TAG, "Unexpected rotation=$rotation (normalized=$normalizedRotation), skipping orientation hint")
                 }
             }
 
@@ -397,7 +399,13 @@ class VideoTranscoder(
                     options.resolutionDirectWidth to options.resolutionDirectHeight
                 fitDimensions(srcW, srcH, maxW, maxH)
             }
-            ResolutionMode.PRESET -> fitDimensions(srcW, srcH, options.resolutionPreset.width, options.resolutionPreset.height)
+            ResolutionMode.PRESET -> {
+                val (maxW, maxH) = if (isRotated)
+                    options.resolutionPreset.height to options.resolutionPreset.width
+                else
+                    options.resolutionPreset.width to options.resolutionPreset.height
+                fitDimensions(srcW, srcH, maxW, maxH)
+            }
         }
     }
 
