@@ -364,7 +364,7 @@ private fun CompressionOptionsContent(
 
     val isValid =
         (options.bitrateMode != BitrateMode.DIRECT || bitrateDirectText.isNotEmpty()) &&
-        (options.audioBitrateMode != BitrateMode.DIRECT || audioBitrateDirectText.isNotEmpty()) &&
+        (options.removeAudio || options.audioBitrateMode != BitrateMode.DIRECT || audioBitrateDirectText.isNotEmpty()) &&
         (options.frameRateMode != FrameRateMode.DIRECT || frameRateDirectText.isNotEmpty()) &&
         (options.resolutionMode != ResolutionMode.DIRECT ||
             (resolutionDirectWidthText.isNotEmpty() && resolutionDirectHeightText.isNotEmpty()))
@@ -469,8 +469,8 @@ private fun CompressionOptionsContent(
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         BitrateMode.entries.forEach { mode ->
             FilterChip(
-                selected = options.audioBitrateMode == mode,
-                onClick = { viewModel.updateOptions(options.copy(audioBitrateMode = mode)) },
+                selected = options.audioBitrateMode == mode && !options.removeAudio,
+                onClick = { viewModel.updateOptions(options.copy(audioBitrateMode = mode, removeAudio = false)) },
                 label = {
                     Text(
                         when (mode) {
@@ -482,46 +482,53 @@ private fun CompressionOptionsContent(
                 }
             )
         }
+        FilterChip(
+            selected = options.removeAudio,
+            onClick = { viewModel.updateOptions(options.copy(removeAudio = true)) },
+            label = { Text(stringResource(R.string.remove_audio)) }
+        )
     }
 
-    when (options.audioBitrateMode) {
-        BitrateMode.PERCENTAGE -> {
-            Text(stringResource(R.string.progress_percentage, options.audioBitratePercentage))
-            androidx.compose.material3.Slider(
-                value = options.audioBitratePercentage.toFloat(),
-                onValueChange = { viewModel.updateOptions(options.copy(audioBitratePercentage = it.toInt())) },
-                valueRange = 10f..100f,
-                steps = 17
-            )
-        }
-        BitrateMode.DIRECT -> {
-            OutlinedTextField(
-                value = audioBitrateDirectText,
-                onValueChange = { v ->
-                    audioBitrateDirectText = v
-                    v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(audioBitrateDirectKbps = it)) }
-                },
-                isError = audioBitrateDirectText.isEmpty(),
-                label = { Text(stringResource(R.string.kbps)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        BitrateMode.PRESET -> {
-            var expanded by remember { mutableStateOf(false) }
-            Box {
-                OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.preset_label_format, stringResource(options.audioBitratePreset.labelResId), stringResource(R.string.kbps_format_int, options.audioBitratePreset.kbps)))
-                }
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    AudioBitratePreset.entries.forEach { preset ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.preset_label_format, stringResource(preset.labelResId), stringResource(R.string.kbps_format_int, preset.kbps))) },
-                            onClick = {
-                                viewModel.updateOptions(options.copy(audioBitratePreset = preset))
-                                expanded = false
-                            }
-                        )
+    if (!options.removeAudio) {
+        when (options.audioBitrateMode) {
+            BitrateMode.PERCENTAGE -> {
+                Text(stringResource(R.string.progress_percentage, options.audioBitratePercentage))
+                androidx.compose.material3.Slider(
+                    value = options.audioBitratePercentage.toFloat(),
+                    onValueChange = { viewModel.updateOptions(options.copy(audioBitratePercentage = it.toInt())) },
+                    valueRange = 10f..100f,
+                    steps = 17
+                )
+            }
+            BitrateMode.DIRECT -> {
+                OutlinedTextField(
+                    value = audioBitrateDirectText,
+                    onValueChange = { v ->
+                        audioBitrateDirectText = v
+                        v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(audioBitrateDirectKbps = it)) }
+                    },
+                    isError = audioBitrateDirectText.isEmpty(),
+                    label = { Text(stringResource(R.string.kbps)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            BitrateMode.PRESET -> {
+                var expanded by remember { mutableStateOf(false) }
+                Box {
+                    OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.preset_label_format, stringResource(options.audioBitratePreset.labelResId), stringResource(R.string.kbps_format_int, options.audioBitratePreset.kbps)))
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        AudioBitratePreset.entries.forEach { preset ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.preset_label_format, stringResource(preset.labelResId), stringResource(R.string.kbps_format_int, preset.kbps))) },
+                                onClick = {
+                                    viewModel.updateOptions(options.copy(audioBitratePreset = preset))
+                                    expanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }

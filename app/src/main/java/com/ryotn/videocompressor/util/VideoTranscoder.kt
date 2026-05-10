@@ -213,10 +213,10 @@ class VideoTranscoder(
             }
 
             // Probe audio format now so we can add it as a track before muxer.start()
-            val audioTrackIdx = findTrack(audioExtractor, "audio/")
+            val audioTrackIdx = if (options.removeAudio) -1 else findTrack(audioExtractor, "audio/")
             val audioFormat: MediaFormat? = if (audioTrackIdx >= 0)
                 audioExtractor.getTrackFormat(audioTrackIdx) else null
-            val transcodedAudio = transcodeAudioTrack(targetAudioBitrateBps)
+            val transcodedAudio = if (options.removeAudio) null else transcodeAudioTrack(targetAudioBitrateBps)
 
             // ---- start codecs ----
             videoExtractor.selectTrack(videoTrackIdx)
