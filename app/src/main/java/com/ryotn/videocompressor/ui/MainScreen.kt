@@ -419,6 +419,7 @@ private fun CompressionOptionsContent(
                 label = {
                     Text(
                         when (mode) {
+                            FrameRateMode.PERCENTAGE -> stringResource(R.string.percentage)
                             FrameRateMode.DIRECT -> stringResource(R.string.direct)
                             FrameRateMode.PRESET -> stringResource(R.string.preset)
                         }
@@ -429,6 +430,19 @@ private fun CompressionOptionsContent(
     }
 
     when (options.frameRateMode) {
+        FrameRateMode.PERCENTAGE -> {
+            Text(stringResource(R.string.progress_percentage, options.frameRatePercentage))
+            androidx.compose.material3.Slider(
+                value = options.frameRatePercentage.toFloat(),
+                onValueChange = { viewModel.updateOptions(options.copy(frameRatePercentage = it.toInt())) },
+                valueRange = 10f..100f,
+                steps = 17
+            )
+            if (videoInfo != null && videoInfo.frameRateFps > 0) {
+                val targetFps = options.computeTargetFrameRateFps(videoInfo.frameRateFps)
+                Text(stringResource(R.string.output_frame_rate, targetFps), style = MaterialTheme.typography.bodySmall)
+            }
+        }
         FrameRateMode.DIRECT -> {
             OutlinedTextField(
                 value = frameRateDirectText,
