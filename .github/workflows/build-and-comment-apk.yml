@@ -1,11 +1,12 @@
 name: Build and Comment APK
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
 
 jobs:
   build-and-comment:
+    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/apk') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
