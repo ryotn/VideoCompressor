@@ -53,9 +53,7 @@ class MainActivity : ComponentActivity() {
                     val saveDirectoryUri by vm.saveDirectoryUri.collectAsState()
 
                     val perms = buildList {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            add(Manifest.permission.POST_NOTIFICATIONS)
-                        }
+                        add(Manifest.permission.POST_NOTIFICATIONS)
                     }
 
                     val notGranted = perms.filter {
