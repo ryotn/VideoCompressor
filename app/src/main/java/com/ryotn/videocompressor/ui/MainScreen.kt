@@ -342,7 +342,7 @@ private fun CompressionOptionsContent(
     var codecExpanded by remember { mutableStateOf(false) }
     Box {
         OutlinedButton(onClick = { codecExpanded = true }, modifier = Modifier.fillMaxWidth()) {
-            val isOriginal = videoInfo?.videoCodecMime != null && options.videoCodec.mimeType.equals(videoInfo.videoCodecMime, ignoreCase = true)
+            val isOriginal = options.videoCodec.mimeType.equals(videoInfo?.videoCodecMime, ignoreCase = true)
             val labelStr = stringResource(options.videoCodec.labelResId)
             val displayText = if (isOriginal) stringResource(R.string.codec_original_format, labelStr) else labelStr
             Text(displayText)
