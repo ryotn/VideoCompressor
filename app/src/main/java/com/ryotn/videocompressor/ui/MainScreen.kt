@@ -74,7 +74,7 @@ fun MainScreen(
     val state by viewModel.compressionState.collectAsState()
 
     var currentStep by rememberSaveable { mutableStateOf(ScreenStep.Selection) }
-    var showExitDialog by remember { mutableStateOf(false) }
+    var showExitDialog by rememberSaveable { mutableStateOf(false) }
     val activity = LocalContext.current as? Activity
 
     LaunchedEffect(state) {
