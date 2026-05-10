@@ -46,6 +46,7 @@ class CompressionService : Service() {
         private const val NOTIFICATION_ID = 1001
         const val COMPLETION_NOTIFICATION_ID = 1002
         private const val CHANNEL_ID = "compression_channel"
+        private const val COMPLETE_CHANNEL_ID = "compression_complete_channel"
         private const val TAG = "CompressionService"
     }
 
@@ -187,15 +188,25 @@ class CompressionService : Service() {
     }
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(
+        val nm = getSystemService(NotificationManager::class.java)
+
+        val progressChannel = NotificationChannel(
             CHANNEL_ID,
             getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = getString(R.string.notification_channel_description)
         }
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.createNotificationChannel(channel)
+
+        val completeChannel = NotificationChannel(
+            COMPLETE_CHANNEL_ID,
+            getString(R.string.notification_channel_complete_name),
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = getString(R.string.notification_channel_complete_description)
+        }
+
+        nm?.createNotificationChannels(listOf(progressChannel, completeChannel))
     }
 
     private fun buildNotification(progress: Float): Notification {
@@ -234,7 +245,7 @@ class CompressionService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(this, COMPLETE_CHANNEL_ID)
             .setContentTitle(getString(R.string.compression_complete))
             .setContentText(getString(R.string.save_destination, outputPath))
             .setSmallIcon(R.drawable.ic_notification)
