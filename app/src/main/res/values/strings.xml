@@ -20,6 +20,8 @@
     <string name="compression_failed">圧縮失敗</string>
     <string name="notification_channel_name">動画圧縮</string>
     <string name="notification_channel_description">動画圧縮の進捗を表示します</string>
+    <string name="notification_channel_complete_name">圧縮完了</string>
+    <string name="notification_channel_complete_description">動画圧縮の完了を通知します</string>
     <string name="no_video_selected">動画が選択されていません</string>
     <string name="save_directory">保存先フォルダ</string>
     <string name="select_save_directory">保存先を選択</string>
