@@ -9,7 +9,7 @@
         android:pathData="M33,32 L75,32 A9,9 0 0,1 84,41 C73.3,41 73.3,67 84,67 A9,9 0 0,1 75,76 L33,76 A9,9 0 0,1 24,67 C34.7,67 34.7,41 24,41 A9,9 0 0,1 33,32 Z" />
     <!-- Play triangle (background colour, appears as a cut-out in the white frame) -->
     <path
-        android:fillColor="#4A90E2"
+        android:fillColor="@color/ic_launcher_background"
         android:pathData="M47,45 L47,63 L61,54 Z" />
     <!-- Down arrow above frame -->
     <path
