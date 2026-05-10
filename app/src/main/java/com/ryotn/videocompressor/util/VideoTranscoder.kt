@@ -45,6 +45,7 @@ class VideoTranscoder(
 ) {
     private data class SelectedEncoder(
         val codec: MediaCodec,
+        val mimeType: String,
         val bitrateMode: Int?,
         val appliedBitrateBps: Long
     )
@@ -177,8 +178,7 @@ class VideoTranscoder(
             // ---- encoder ----
             val targetMime = options.videoCodec.mimeType
             val selectedEncoder = selectEncoder(targetBitrateBps, targetW, targetH, targetMime)
-            val actualMime = if (selectedEncoder.codec.codecInfo.supportedTypes.any { it.equals(targetMime, ignoreCase = true) }) targetMime else FALLBACK_VIDEO_MIME
-            val encoderFormat = MediaFormat.createVideoFormat(actualMime, targetW, targetH).apply {
+            val encoderFormat = MediaFormat.createVideoFormat(selectedEncoder.mimeType, targetW, targetH).apply {
                 val bpsInt = selectedEncoder.appliedBitrateBps.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
                 setInteger(MediaFormat.KEY_BIT_RATE, bpsInt)
 
@@ -498,17 +498,22 @@ class VideoTranscoder(
             )
             return SelectedEncoder(
                 codec = MediaCodec.createByCodecName(info.name),
+                mimeType = mimeType,
                 bitrateMode = bitrateMode,
                 appliedBitrateBps = targetBitrateBps
             )
         }
 
         Log.w(TAG, "No encoder supporting ${width}x${height} for $mimeType, using default")
+        var fallbackMimeType = mimeType
+        val fallbackCodec = runCatching { MediaCodec.createEncoderByType(mimeType) }.getOrElse {
+            Log.w(TAG, "Failed to create encoder for $mimeType, falling back to $FALLBACK_VIDEO_MIME", it)
+            fallbackMimeType = FALLBACK_VIDEO_MIME
+            MediaCodec.createEncoderByType(FALLBACK_VIDEO_MIME)
+        }
         return SelectedEncoder(
-            codec = runCatching { MediaCodec.createEncoderByType(mimeType) }.getOrElse {
-                Log.w(TAG, "Failed to create encoder for $mimeType, falling back to $FALLBACK_VIDEO_MIME", it)
-                MediaCodec.createEncoderByType(FALLBACK_VIDEO_MIME)
-            },
+            codec = fallbackCodec,
+            mimeType = fallbackMimeType,
             bitrateMode = null,
             appliedBitrateBps = targetBitrateBps
         )
