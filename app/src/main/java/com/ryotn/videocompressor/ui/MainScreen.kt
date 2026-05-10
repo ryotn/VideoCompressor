@@ -539,13 +539,21 @@ private fun CompressionOptionsContent(
             }
         }
         ResolutionMode.PRESET -> {
+            val availablePresets = remember(videoInfo) {
+                ResolutionPreset.entries.distinctBy { computePresetDisplayDimensions(it, videoInfo) }
+            }
+            LaunchedEffect(availablePresets, options.resolutionPreset) {
+                if (options.resolutionPreset !in availablePresets) {
+                    viewModel.updateOptions(options.copy(resolutionPreset = availablePresets.last()))
+                }
+            }
             var expanded by remember { mutableStateOf(false) }
             Box {
                 OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
                     Text(formatResolutionPresetLabel(options.resolutionPreset, videoInfo))
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    ResolutionPreset.entries.forEach { preset ->
+                    availablePresets.forEach { preset ->
                         DropdownMenuItem(
                             text = { Text(formatResolutionPresetLabel(preset, videoInfo)) },
                             onClick = {
