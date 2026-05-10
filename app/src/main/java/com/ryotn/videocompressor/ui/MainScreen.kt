@@ -439,7 +439,7 @@ private fun CompressionOptionsContent(
                 steps = 17
             )
             if (videoInfo != null && videoInfo.frameRateFps > 0) {
-                val targetFps = computeTargetFrameRateFps(options, videoInfo.frameRateFps)
+                val targetFps = options.computeTargetFrameRateFps(videoInfo.frameRateFps)
                 Text(stringResource(R.string.output_frame_rate, targetFps), style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -582,16 +582,6 @@ private fun computePresetDisplayDimensions(preset: ResolutionPreset, videoInfo: 
     val width = makeEven((srcW * scale).toInt().coerceAtLeast(2))
     val height = makeEven((srcH * scale).toInt().coerceAtLeast(2))
     return width to height
-}
-
-private fun computeTargetFrameRateFps(options: CompressionOptions, sourceFrameRate: Float): Int {
-    return when (options.frameRateMode) {
-        FrameRateMode.PERCENTAGE -> (sourceFrameRate * (options.frameRatePercentage / 100f)).toInt()
-        FrameRateMode.DIRECT -> options.frameRateDirectFps
-        FrameRateMode.PRESET -> options.frameRatePreset.fps
-    }.coerceAtLeast(1).let { target ->
-        if (sourceFrameRate > 0) minOf(target, sourceFrameRate.toInt()) else target
-    }
 }
 
 /** Computes the actual output dimensions for the current resolution settings, mirroring VideoTranscoder logic. */

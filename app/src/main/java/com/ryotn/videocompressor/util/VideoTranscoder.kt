@@ -150,15 +150,8 @@ class VideoTranscoder(
             val rotation = if (videoInputFormat.containsKey(MediaFormat.KEY_ROTATION))
                 videoInputFormat.getInteger(MediaFormat.KEY_ROTATION) else 0
             val sourceFrameRate = if (videoInputFormat.containsKey(MediaFormat.KEY_FRAME_RATE)) {
-                try {
-                    videoInputFormat.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
-                } catch (e: Exception) {
-                    try {
-                        videoInputFormat.getFloat(MediaFormat.KEY_FRAME_RATE)
-                    } catch (e2: Exception) {
-                        30f
-                    }
-                }
+                runCatching { videoInputFormat.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat() }
+                    .getOrElse { runCatching { videoInputFormat.getFloat(MediaFormat.KEY_FRAME_RATE) }.getOrDefault(30f) }
             } else 30f
 
             // Strip the rotation flag from the format passed to the decoder.
@@ -173,7 +166,7 @@ class VideoTranscoder(
 
             val (targetW, targetH) = computeTargetDimensions(srcWidth, srcHeight, rotation)
             val targetBitrateBps = computeTargetBitrateBps().coerceAtLeast(MIN_BITRATE_BPS)
-            val targetFrameRateFps = computeTargetFrameRateFps(sourceFrameRate).coerceAtLeast(1)
+            val targetFrameRateFps = options.computeTargetFrameRateFps(sourceFrameRate).coerceAtLeast(1)
             val targetAudioBitrateBps = computeTargetAudioBitrateBps().coerceAtLeast(MIN_AUDIO_BITRATE_BPS)
             Log.d(
                 TAG,
@@ -449,17 +442,6 @@ class VideoTranscoder(
             }
             BitrateMode.DIRECT -> options.audioBitrateDirectKbps * 1000L
             BitrateMode.PRESET -> options.audioBitratePreset.kbps * 1000L
-        }
-    }
-
-    private fun computeTargetFrameRateFps(sourceFrameRate: Float): Int {
-        return when (options.frameRateMode) {
-            FrameRateMode.PERCENTAGE -> (sourceFrameRate * (options.frameRatePercentage / 100f)).toInt()
-            FrameRateMode.DIRECT -> options.frameRateDirectFps
-            FrameRateMode.PRESET -> options.frameRatePreset.fps
-        }.coerceAtLeast(1).let { target ->
-            // Frame interpolation is not implemented in this pipeline, so cap to source fps.
-            if (sourceFrameRate > 0) minOf(target, sourceFrameRate.toInt()) else target
         }
     }
 

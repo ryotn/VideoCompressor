@@ -53,4 +53,14 @@ data class CompressionOptions(
     val resolutionDirectWidth: Int = 1280,
     val resolutionDirectHeight: Int = 720,
     val resolutionPreset: ResolutionPreset = ResolutionPreset.HD
-) : Serializable
+) : Serializable {
+    fun computeTargetFrameRateFps(sourceFrameRate: Float): Int {
+        return when (frameRateMode) {
+            FrameRateMode.PERCENTAGE -> (sourceFrameRate * (frameRatePercentage / 100f)).toInt()
+            FrameRateMode.DIRECT -> frameRateDirectFps
+            FrameRateMode.PRESET -> frameRatePreset.fps
+        }.coerceAtLeast(1).let { target ->
+            if (sourceFrameRate > 0) minOf(target, sourceFrameRate.toInt()) else target
+        }
+    }
+}
