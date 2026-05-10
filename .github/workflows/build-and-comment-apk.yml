@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-and-comment:
-    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/apk') }}
+    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/apk') && contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
