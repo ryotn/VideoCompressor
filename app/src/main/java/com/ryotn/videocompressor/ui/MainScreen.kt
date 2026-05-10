@@ -103,8 +103,11 @@ fun MainScreen(
                 if (state is CompressionState.Failed || state is CompressionState.Cancelled) {
                     viewModel.resetState()
                     currentStep = ScreenStep.Options
-                } else {
+                } else if (state is CompressionState.Preparing || state is CompressionState.InProgress) {
                     showCancelDialog = true
+                } else if (state is CompressionState.Completed) {
+                    viewModel.resetState()
+                    currentStep = ScreenStep.Selection
                 }
             }
             else -> {
@@ -136,6 +139,11 @@ fun MainScreen(
     }
 
     if (showCancelDialog) {
+        LaunchedEffect(state) {
+            if (state !is CompressionState.Preparing && state !is CompressionState.InProgress) {
+                showCancelDialog = false
+            }
+        }
         AlertDialog(
             onDismissRequest = { showCancelDialog = false },
             title = {
