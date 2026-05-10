@@ -38,6 +38,7 @@
     <string name="width_limit">幅（上限）</string>
     <string name="height_limit">高さ（上限）</string>
     <string name="output_resolution">出力解像度: %1$d×%2$d</string>
+    <string name="output_frame_rate">出力フレームレート: %d fps</string>
     <string name="preparing_compression">圧縮準備中...</string>
     <string name="back_to_options">オプションへ戻る</string>
     <string name="compression_cancelled">圧縮がキャンセルされました</string>
@@ -68,10 +69,4 @@
     <string name="preset_cinema">シネマ</string>
     <string name="preset_standard">標準</string>
     <string name="preset_smooth">なめらか</string>
-
-    <string name="notification_permission_title">通知権限について</string>
-    <string name="notification_permission_message">動画圧縮の進捗状況をお知らせするために、通知権限が必要です。</string>
-    <string name="save_directory_permission_title">保存先の指定について</string>
-    <string name="save_directory_permission_message">圧縮した動画を保存するためのフォルダを指定してください。</string>
-    <string name="ok">OK</string>
 </resources>
