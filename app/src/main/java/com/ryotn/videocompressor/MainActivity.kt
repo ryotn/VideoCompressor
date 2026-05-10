@@ -24,6 +24,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ryotn.videocompressor.ui.MainScreen
+import com.ryotn.videocompressor.service.CompressionService
 import com.ryotn.videocompressor.ui.theme.VideoCompressorTheme
 import com.ryotn.videocompressor.viewmodel.MainViewModel
 
@@ -108,10 +109,12 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent?, vm: MainViewModel) {
         if (intent?.getBooleanExtra("show_completion", false) == true) {
-            val outputPath = intent.getStringExtra("output_path") ?: ""
-            val originalSize = intent.getLongExtra("original_size", 0L)
-            val outputSize = intent.getLongExtra("output_size", 0L)
-            vm.setCompressionCompleted(outputPath, originalSize, outputSize)
+            val outputPath = intent.getStringExtra(CompressionService.EXTRA_OUTPUT_PATH) ?: ""
+            val originalSize = intent.getLongExtra(CompressionService.EXTRA_ORIGINAL_SIZE, 0L)
+            val outputSize = intent.getLongExtra(CompressionService.EXTRA_OUTPUT_SIZE, 0L)
+            // Create a unique ID for this intent based on its data
+            val intentId = intent.hashCode()
+            vm.setCompressionCompleted(outputPath, originalSize, outputSize, intentId)
             // Remove the flag so it doesn't trigger again on rotation, etc.
             intent.removeExtra("show_completion")
         }

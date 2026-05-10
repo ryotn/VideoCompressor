@@ -213,8 +213,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _compressionState.value = CompressionState.Idle
     }
 
-    fun setCompressionCompleted(outputPath: String, originalSize: Long, outputSize: Long) {
+    private var lastHandledCompletionIntentId: Int = -1
+
+    fun setCompressionCompleted(outputPath: String, originalSize: Long, outputSize: Long, intentId: Int = -1) {
+        if (intentId != -1 && intentId == lastHandledCompletionIntentId) {
+            return
+        }
         _compressionState.value = CompressionState.Completed(outputPath, originalSize, outputSize)
+        if (intentId != -1) {
+            lastHandledCompletionIntentId = intentId
+        }
     }
 
     override fun onCleared() {

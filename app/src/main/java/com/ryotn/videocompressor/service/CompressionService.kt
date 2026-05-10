@@ -44,6 +44,7 @@ class CompressionService : Service() {
         const val EXTRA_OUTPUT_SIZE = "output_size"
         const val EXTRA_ERROR = "error"
         private const val NOTIFICATION_ID = 1001
+        const val COMPLETION_NOTIFICATION_ID = 1002
         private const val CHANNEL_ID = "compression_channel"
         private const val TAG = "CompressionService"
     }
@@ -223,9 +224,9 @@ class CompressionService : Service() {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("show_completion", true)
-            putExtra("output_path", outputPath)
-            putExtra("original_size", originalSize)
-            putExtra("output_size", outputSize)
+            putExtra(EXTRA_OUTPUT_PATH, outputPath)
+            putExtra(EXTRA_ORIGINAL_SIZE, originalSize)
+            putExtra(EXTRA_OUTPUT_SIZE, outputSize)
         }
         val pendingIntent = PendingIntent.getActivity(
             this, 1,
@@ -242,7 +243,7 @@ class CompressionService : Service() {
             .build()
 
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(NOTIFICATION_ID + 1, notification)
+        nm.notify(COMPLETION_NOTIFICATION_ID, notification)
     }
 
     private fun sendBroadcastMsg(action: String, extras: Map<String, String>) {
