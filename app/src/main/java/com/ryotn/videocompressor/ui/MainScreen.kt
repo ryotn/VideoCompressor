@@ -547,8 +547,13 @@ private fun computePresetDisplayDimensions(preset: ResolutionPreset, videoInfo: 
     val srcH = videoInfo.height
     if (srcW <= 0 || srcH <= 0) return preset.width to preset.height
 
+    // Orient the preset to match the video. For portrait videos (height > width) the
+    // preset's width and height are swapped so the "long side" constraint is applied to
+    // the video's long side.
+    val (maxW, maxH) = if (srcH > srcW) preset.height to preset.width else preset.width to preset.height
+
     // Clamp scale to 1.0 so the video is never upscaled.
-    val scale = minOf(1.0f, preset.width.toFloat() / srcW, preset.height.toFloat() / srcH)
+    val scale = minOf(1.0f, maxW.toFloat() / srcW, maxH.toFloat() / srcH)
     val width = makeEven((srcW * scale).toInt().coerceAtLeast(2))
     val height = makeEven((srcH * scale).toInt().coerceAtLeast(2))
     return width to height
@@ -569,7 +574,9 @@ private fun computeOutputDimensions(options: CompressionOptions, videoInfo: Vide
         }
         ResolutionMode.PRESET -> {
             val preset = options.resolutionPreset
-            val scale = minOf(1.0f, preset.width.toFloat() / srcW, preset.height.toFloat() / srcH)
+            // Orient the preset to match the video orientation (portrait vs landscape).
+            val (maxW, maxH) = if (srcH > srcW) preset.height to preset.width else preset.width to preset.height
+            val scale = minOf(1.0f, maxW.toFloat() / srcW, maxH.toFloat() / srcH)
             makeEven((srcW * scale).toInt().coerceAtLeast(2)) to makeEven((srcH * scale).toInt().coerceAtLeast(2))
         }
     }
