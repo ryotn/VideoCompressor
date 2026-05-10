@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     var permissionsGranted by remember { mutableStateOf(false) }
+                    val saveDirectoryUri by vm.saveDirectoryUri.collectAsState()
                     var showNotificationRationale by rememberSaveable { mutableStateOf(false) }
                     var showSaveDirectoryRationale by rememberSaveable { mutableStateOf(false) }
                     val perms = remember { buildList { add(Manifest.permission.POST_NOTIFICATIONS) } }
