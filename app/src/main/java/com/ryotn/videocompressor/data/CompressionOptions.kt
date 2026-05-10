@@ -35,7 +35,14 @@ enum class AudioBitratePreset(@StringRes val labelResId: Int, val kbps: Int) {
     VERY_HIGH(R.string.preset_very_high, 256)
 }
 
+enum class VideoCodec(@StringRes val labelResId: Int, val mimeType: String) {
+    H264(R.string.codec_h264, "video/avc"),
+    H265(R.string.codec_h265, "video/hevc"),
+    AV1(R.string.codec_av1, "video/av01")
+}
+
 data class CompressionOptions(
+    val videoCodec: VideoCodec = VideoCodec.H264,
     val bitrateMode: BitrateMode = BitrateMode.PRESET,
     val bitratePercentage: Int = 50,
     val bitrateDirectKbps: Int = 2000,

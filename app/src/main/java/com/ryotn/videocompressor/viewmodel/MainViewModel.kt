@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
@@ -18,6 +19,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.ryotn.videocompressor.data.CompressionOptions
 import com.ryotn.videocompressor.data.CompressionState
 import com.ryotn.videocompressor.data.VideoInfo
+import com.ryotn.videocompressor.data.VideoCodec
 import com.ryotn.videocompressor.service.CompressionService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +30,17 @@ import kotlinx.coroutines.withContext
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences("video_compressor_prefs", Context.MODE_PRIVATE)
+
+    val supportedVideoCodecs: List<VideoCodec> by lazy {
+        val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+        val supportedMimeTypes = codecList.codecInfos
+            .filter { it.isEncoder }
+            .flatMap { it.supportedTypes.toList() }
+            .toSet()
+        VideoCodec.entries.filter { codec ->
+            supportedMimeTypes.any { it.equals(codec.mimeType, ignoreCase = true) }
+        }.ifEmpty { listOf(VideoCodec.H264) }
+    }
 
     private val _videoInfo = MutableStateFlow<VideoInfo?>(null)
     val videoInfo: StateFlow<VideoInfo?> = _videoInfo
@@ -85,6 +98,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             _videoInfo.value = info
             _compressionState.value = CompressionState.Idle
+
+            // Set default codec if matched
+            val matchingCodec = info?.videoCodecMime?.let { mime ->
+                supportedVideoCodecs.find { it.mimeType.equals(mime, ignoreCase = true) }
+            } ?: supportedVideoCodecs.firstOrNull() ?: VideoCodec.H264
+
+            _compressionOptions.value = _compressionOptions.value.copy(videoCodec = matchingCodec)
         }
     }
 
@@ -115,10 +135,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val extractor = MediaExtractor()
             val audioBitrateBps: Long
             val frameRateFps: Float
+            var videoCodecMime: String? = null
             try {
                 extractor.setDataSource(context, uri, null)
                 audioBitrateBps = extractAudioBitrate(extractor)
                 frameRateFps = extractVideoFrameRate(extractor)
+                videoCodecMime = extractVideoCodecMime(extractor)
             } finally {
                 extractor.release()
             }
@@ -127,8 +149,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // relative to the display dimensions. Store display dimensions so the UI shows
             // the correct portrait/landscape orientation.
             val (displayWidth, displayHeight) = if (rotation == 90 || rotation == 270) height to width else width to height
-            VideoInfo(uri, displayName, sizeBytes, durationMs, displayWidth, displayHeight, bitrate, audioBitrateBps, frameRateFps)
+            VideoInfo(uri, displayName, sizeBytes, durationMs, displayWidth, displayHeight, bitrate, audioBitrateBps, frameRateFps, videoCodecMime)
         } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun extractVideoCodecMime(extractor: MediaExtractor): String? {
+        return try {
+            for (trackIndex in 0 until extractor.trackCount) {
+                val format = extractor.getTrackFormat(trackIndex)
+                val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+                if (mime.startsWith("video/")) return mime
+            }
+            null
+        } catch (_: Exception) {
             null
         }
     }

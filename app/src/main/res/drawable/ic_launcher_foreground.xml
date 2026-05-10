@@ -3,7 +3,20 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Pinched / squeezed video frame (white) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,27L27,27L27,81L81,81L81,27Z"/>
+        android:pathData="M33,32 L75,32 A9,9 0 0,1 84,41 C73.3,41 73.3,67 84,67 A9,9 0 0,1 75,76 L33,76 A9,9 0 0,1 24,67 C34.7,67 34.7,41 24,41 A9,9 0 0,1 33,32 Z" />
+    <!-- Play triangle (background colour, appears as a cut-out in the white frame) -->
+    <path
+        android:fillColor="@color/ic_launcher_background"
+        android:pathData="M47,45 L47,63 L61,54 Z" />
+    <!-- Down arrow above frame -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,12 L60,12 L60,21 L64,21 L54,29 L44,21 L48,21 Z" />
+    <!-- Up arrow below frame -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,96 L60,96 L60,87 L64,87 L54,79 L44,87 L48,87 Z" />
 </vector>
