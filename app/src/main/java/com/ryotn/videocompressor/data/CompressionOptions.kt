@@ -7,6 +7,7 @@ import java.io.Serializable
 enum class BitrateMode { PERCENTAGE, DIRECT, PRESET }
 enum class ResolutionMode { PERCENTAGE, DIRECT, PRESET }
 enum class FrameRateMode { PERCENTAGE, DIRECT, PRESET }
+enum class CompressionMode { SIMPLE, ADVANCED }
 
 enum class BitratePreset(@StringRes val labelResId: Int, val kbps: Int) {
     LOW(R.string.preset_low, 500),
@@ -39,6 +40,47 @@ enum class VideoCodec(@StringRes val labelResId: Int, val mimeType: String) {
     H264(R.string.codec_h264, "video/avc"),
     H265(R.string.codec_h265, "video/hevc"),
     AV1(R.string.codec_av1, "video/av01")
+}
+
+data class SimpleCompressionOptions(
+    val targetSizeMb: Int = 100
+) : Serializable {
+    companion object {
+        const val AUDIO_BITRATE_KBPS = 128
+        const val FRAME_RATE_FPS = 30
+        const val MIN_VIDEO_BITRATE_FHD_KBPS = 2000
+        const val MIN_VIDEO_BITRATE_HD_KBPS = 500
+    }
+
+    fun computeVideoBitrateKbps(videoInfo: VideoInfo?): Int {
+        if (videoInfo == null || videoInfo.durationMs <= 0) return MIN_VIDEO_BITRATE_FHD_KBPS
+        val targetBits = targetSizeMb * 1024L * 1024L * 8L
+        val durationSeconds = videoInfo.durationMs / 1000.0
+        val totalBitrateKbps = (targetBits / durationSeconds / 1000).toInt()
+        return (totalBitrateKbps - AUDIO_BITRATE_KBPS).coerceAtLeast(0)
+    }
+
+    fun computeResolutionPreset(videoBitrateKbps: Int): ResolutionPreset =
+        if (videoBitrateKbps >= MIN_VIDEO_BITRATE_FHD_KBPS) ResolutionPreset.FHD else ResolutionPreset.HD
+
+    fun isAchievable(videoInfo: VideoInfo?): Boolean =
+        computeVideoBitrateKbps(videoInfo) >= MIN_VIDEO_BITRATE_HD_KBPS
+
+    fun toCompressionOptions(videoInfo: VideoInfo?, preferH265: Boolean = true): CompressionOptions {
+        val videoBitrateKbps = computeVideoBitrateKbps(videoInfo).coerceAtLeast(MIN_VIDEO_BITRATE_HD_KBPS)
+        val resolution = computeResolutionPreset(videoBitrateKbps)
+        return CompressionOptions(
+            videoCodec = if (preferH265) VideoCodec.H265 else VideoCodec.H264,
+            frameRateMode = FrameRateMode.DIRECT,
+            frameRateDirectFps = FRAME_RATE_FPS,
+            bitrateMode = BitrateMode.DIRECT,
+            bitrateDirectKbps = videoBitrateKbps,
+            audioBitrateMode = BitrateMode.DIRECT,
+            audioBitrateDirectKbps = AUDIO_BITRATE_KBPS,
+            resolutionMode = ResolutionMode.PRESET,
+            resolutionPreset = resolution
+        )
+    }
 }
 
 data class CompressionOptions(

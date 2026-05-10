@@ -91,4 +91,15 @@
     <string name="preset_standard">標準</string>
     <string name="preset_smooth">なめらか</string>
     <string name="estimated_size_label">圧縮後のファイルサイズ（予想）: %s</string>
+
+    <string name="simple_mode">簡単</string>
+    <string name="advanced_mode">詳細</string>
+    <string name="target_file_size">目標ファイルサイズ: %d MB</string>
+    <string name="computed_settings">推定圧縮設定</string>
+    <string name="computed_codec_label">コーデック: %s（固定）</string>
+    <string name="computed_fps_label">フレームレート: %d fps（固定）</string>
+    <string name="computed_resolution_label">解像度: %1$d×%2$d</string>
+    <string name="computed_video_bitrate_label">動画ビットレート: %s</string>
+    <string name="computed_audio_bitrate_label">音声ビットレート: %d kbps（固定）</string>
+    <string name="file_size_warning">指定されたファイルサイズが小さすぎるため、十分な品質を確保できない可能性があります</string>
 </resources>

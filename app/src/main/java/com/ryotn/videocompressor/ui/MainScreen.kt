@@ -49,12 +49,14 @@ import com.ryotn.videocompressor.R
 import com.ryotn.videocompressor.data.AudioBitratePreset
 import com.ryotn.videocompressor.data.BitrateMode
 import com.ryotn.videocompressor.data.BitratePreset
+import com.ryotn.videocompressor.data.CompressionMode
 import com.ryotn.videocompressor.data.CompressionOptions
 import com.ryotn.videocompressor.data.CompressionState
 import com.ryotn.videocompressor.data.FrameRateMode
 import com.ryotn.videocompressor.data.FrameRatePreset
 import com.ryotn.videocompressor.data.ResolutionMode
 import com.ryotn.videocompressor.data.ResolutionPreset
+import com.ryotn.videocompressor.data.SimpleCompressionOptions
 import com.ryotn.videocompressor.data.VideoInfo
 import com.ryotn.videocompressor.data.VideoCodec
 import com.ryotn.videocompressor.viewmodel.MainViewModel
@@ -78,6 +80,8 @@ fun MainScreen(
     val saveDirectoryUri by viewModel.saveDirectoryUri.collectAsState()
     val saveDirectoryLabel by viewModel.saveDirectoryLabel.collectAsState()
     val state by viewModel.compressionState.collectAsState()
+    val compressionMode by viewModel.compressionMode.collectAsState()
+    val simpleOptions by viewModel.simpleOptions.collectAsState()
 
     var currentStep by rememberSaveable { mutableStateOf(ScreenStep.Selection) }
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
@@ -101,7 +105,9 @@ fun MainScreen(
     BackHandler {
         when (currentStep) {
             ScreenStep.Options -> {
-                if (selectedTabIndex > 0) {
+                if (compressionMode == CompressionMode.SIMPLE) {
+                    currentStep = ScreenStep.Selection
+                } else if (selectedTabIndex > 0) {
                     selectedTabIndex--
                 } else {
                     currentStep = ScreenStep.Selection
@@ -214,7 +220,9 @@ fun MainScreen(
                         viewModel = viewModel,
                         selectedTabIndex = selectedTabIndex,
                         onTabSelected = { selectedTabIndex = it },
-                        onValidityChanged = { isDirectInputValid = it }
+                        onValidityChanged = { isDirectInputValid = it },
+                        compressionMode = compressionMode,
+                        simpleOptions = simpleOptions
                     )
                 }
                 ScreenStep.Progress -> {
@@ -250,10 +258,10 @@ fun MainScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = {
-                            if (selectedTabIndex > 0) {
-                                selectedTabIndex--
-                            } else {
+                            if (compressionMode == CompressionMode.SIMPLE || selectedTabIndex == 0) {
                                 currentStep = ScreenStep.Selection
+                            } else {
+                                selectedTabIndex--
                             }
                         },
                         modifier = Modifier.weight(1f),
@@ -261,7 +269,7 @@ fun MainScreen(
                     ) {
                         Text(stringResource(R.string.back))
                     }
-                    if (selectedTabIndex < 3) {
+                    if (compressionMode == CompressionMode.ADVANCED && selectedTabIndex < 3) {
                         Button(
                             onClick = { selectedTabIndex++ },
                             modifier = Modifier.weight(1f),
@@ -399,7 +407,9 @@ private fun CompressionOptionsContent(
     viewModel: MainViewModel,
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
-    onValidityChanged: (Boolean) -> Unit
+    onValidityChanged: (Boolean) -> Unit,
+    compressionMode: CompressionMode,
+    simpleOptions: SimpleCompressionOptions
 ) {
     // Raw text states for direct input fields, reset when the corresponding mode changes
     var bitrateDirectText by rememberSaveable(options.bitrateMode) {
@@ -418,48 +428,29 @@ private fun CompressionOptionsContent(
         mutableStateOf(options.resolutionDirectHeight.toString())
     }
 
-    val isValid =
+    val isAdvancedValid =
         (options.bitrateMode != BitrateMode.DIRECT || bitrateDirectText.isNotEmpty()) &&
         (options.removeAudio || options.audioBitrateMode != BitrateMode.DIRECT || audioBitrateDirectText.isNotEmpty()) &&
         (options.frameRateMode != FrameRateMode.DIRECT || frameRateDirectText.isNotEmpty()) &&
         (options.resolutionMode != ResolutionMode.DIRECT ||
             (resolutionDirectWidthText.isNotEmpty() && resolutionDirectHeightText.isNotEmpty()))
+    val isValid = compressionMode == CompressionMode.SIMPLE || isAdvancedValid
     LaunchedEffect(isValid) { onValidityChanged(isValid) }
 
     Text(stringResource(R.string.compression_options), style = MaterialTheme.typography.titleMedium)
 
-    if (videoInfo != null) {
-        val estimatedSizeBytes = options.computeEstimatedSizeBytes(videoInfo)
-        if (estimatedSizeBytes > 0) {
-            val mb = estimatedSizeBytes / (1024.0 * 1024.0)
-            val displaySize = if (mb >= 1024) stringResource(R.string.gb_format, mb / 1024) else stringResource(R.string.mb_format, mb)
-            Text(stringResource(R.string.estimated_size_label, displaySize), style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-    }
-
-    val tabs = remember {
-        listOf(
-            R.string.resolution_options,
-            R.string.bitrate_options,
-            R.string.frame_rate_options,
-            R.string.codec_options
-        )
-    }
-
-    TabRow(
-        selectedTabIndex = selectedTabIndex,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        tabs.forEachIndexed { index, titleResId ->
-            Tab(
-                selected = selectedTabIndex == index,
-                onClick = { onTabSelected(index) },
-                text = {
+    // Mode toggle
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CompressionMode.entries.forEach { mode ->
+            FilterChip(
+                selected = compressionMode == mode,
+                onClick = { viewModel.updateCompressionMode(mode) },
+                label = {
                     Text(
-                        text = stringResource(titleResId),
-                        textAlign = TextAlign.Center,
-                        maxLines = 2
+                        when (mode) {
+                            CompressionMode.SIMPLE -> stringResource(R.string.simple_mode)
+                            CompressionMode.ADVANCED -> stringResource(R.string.advanced_mode)
+                        }
                     )
                 }
             )
@@ -468,36 +459,138 @@ private fun CompressionOptionsContent(
 
     Spacer(modifier = Modifier.height(8.dp))
 
-    when (selectedTabIndex) {
-        0 -> ResolutionTabContent(
-            options = options,
-            videoInfo = videoInfo,
-            viewModel = viewModel,
-            resolutionDirectWidthText = resolutionDirectWidthText,
-            onResolutionDirectWidthTextChanged = { resolutionDirectWidthText = it },
-            resolutionDirectHeightText = resolutionDirectHeightText,
-            onResolutionDirectHeightTextChanged = { resolutionDirectHeightText = it }
-        )
-        1 -> BitrateTabContent(
-            options = options,
-            viewModel = viewModel,
-            bitrateDirectText = bitrateDirectText,
-            onBitrateDirectTextChanged = { bitrateDirectText = it },
-            audioBitrateDirectText = audioBitrateDirectText,
-            onAudioBitrateDirectTextChanged = { audioBitrateDirectText = it }
-        )
-        2 -> FrameRateTabContent(
-            options = options,
-            videoInfo = videoInfo,
-            viewModel = viewModel,
-            frameRateDirectText = frameRateDirectText,
-            onFrameRateDirectTextChanged = { frameRateDirectText = it }
-        )
-        3 -> CodecTabContent(
-            options = options,
+    if (compressionMode == CompressionMode.SIMPLE) {
+        SimpleModeContent(
+            simpleOptions = simpleOptions,
             videoInfo = videoInfo,
             viewModel = viewModel
         )
+    } else {
+        if (videoInfo != null) {
+            val estimatedSizeBytes = options.computeEstimatedSizeBytes(videoInfo)
+            if (estimatedSizeBytes > 0) {
+                val mb = estimatedSizeBytes / (1024.0 * 1024.0)
+                val displaySize = if (mb >= 1024) stringResource(R.string.gb_format, mb / 1024) else stringResource(R.string.mb_format, mb)
+                Text(stringResource(R.string.estimated_size_label, displaySize), style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
+        val tabs = remember {
+            listOf(
+                R.string.resolution_options,
+                R.string.bitrate_options,
+                R.string.frame_rate_options,
+                R.string.codec_options
+            )
+        }
+
+        TabRow(
+            selectedTabIndex = selectedTabIndex,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            tabs.forEachIndexed { index, titleResId ->
+                Tab(
+                    selected = selectedTabIndex == index,
+                    onClick = { onTabSelected(index) },
+                    text = {
+                        Text(
+                            text = stringResource(titleResId),
+                            textAlign = TextAlign.Center,
+                            maxLines = 2
+                        )
+                    }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        when (selectedTabIndex) {
+            0 -> ResolutionTabContent(
+                options = options,
+                videoInfo = videoInfo,
+                viewModel = viewModel,
+                resolutionDirectWidthText = resolutionDirectWidthText,
+                onResolutionDirectWidthTextChanged = { resolutionDirectWidthText = it },
+                resolutionDirectHeightText = resolutionDirectHeightText,
+                onResolutionDirectHeightTextChanged = { resolutionDirectHeightText = it }
+            )
+            1 -> BitrateTabContent(
+                options = options,
+                viewModel = viewModel,
+                bitrateDirectText = bitrateDirectText,
+                onBitrateDirectTextChanged = { bitrateDirectText = it },
+                audioBitrateDirectText = audioBitrateDirectText,
+                onAudioBitrateDirectTextChanged = { audioBitrateDirectText = it }
+            )
+            2 -> FrameRateTabContent(
+                options = options,
+                videoInfo = videoInfo,
+                viewModel = viewModel,
+                frameRateDirectText = frameRateDirectText,
+                onFrameRateDirectTextChanged = { frameRateDirectText = it }
+            )
+            3 -> CodecTabContent(
+                options = options,
+                videoInfo = videoInfo,
+                viewModel = viewModel
+            )
+        }
+    }
+}
+
+@Composable
+private fun SimpleModeContent(
+    simpleOptions: SimpleCompressionOptions,
+    videoInfo: VideoInfo?,
+    viewModel: MainViewModel
+) {
+    val videoBitrateKbps = simpleOptions.computeVideoBitrateKbps(videoInfo)
+    val actualBitrateKbps = videoBitrateKbps.coerceAtLeast(SimpleCompressionOptions.MIN_VIDEO_BITRATE_HD_KBPS)
+    val resolution = simpleOptions.computeResolutionPreset(actualBitrateKbps)
+    val isAchievable = simpleOptions.isAchievable(videoInfo)
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            stringResource(R.string.target_file_size, simpleOptions.targetSizeMb),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        androidx.compose.material3.Slider(
+            value = simpleOptions.targetSizeMb.toFloat(),
+            onValueChange = { viewModel.updateSimpleOptions(simpleOptions.copy(targetSizeMb = it.toInt().coerceAtLeast(10))) },
+            valueRange = 10f..4000f
+        )
+
+        if (!isAchievable) {
+            Text(
+                stringResource(R.string.file_size_warning),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
+        if (videoInfo != null) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(stringResource(R.string.computed_settings), style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.computed_codec_label, stringResource(R.string.codec_h265)))
+                    Text(stringResource(R.string.computed_fps_label, SimpleCompressionOptions.FRAME_RATE_FPS))
+                    val (outW, outH) = computePresetDisplayDimensions(resolution, videoInfo)
+                    Text(stringResource(R.string.computed_resolution_label, outW, outH))
+                    val bitrateDisplay = if (actualBitrateKbps >= 1000) {
+                        stringResource(R.string.mbps_format, actualBitrateKbps / 1000.0)
+                    } else {
+                        stringResource(R.string.kbps_format_int, actualBitrateKbps)
+                    }
+                    Text(stringResource(R.string.computed_video_bitrate_label, bitrateDisplay))
+                    Text(stringResource(R.string.computed_audio_bitrate_label, SimpleCompressionOptions.AUDIO_BITRATE_KBPS))
+                }
+            }
+        }
     }
 }
 
