@@ -110,8 +110,8 @@ fun MainScreen(
             }
             ScreenStep.Options -> {
                 // Initial validity is true because raw text states are initialised from Int option
-                // values whose toString() is always non-empty; LaunchedEffect corrects it immediately
-                // whenever the user empties a direct-input field.
+                // values whose toString() is always non-empty. LaunchedEffect keeps the parent
+                // state in sync whenever the user clears a direct-input field.
                 var isDirectInputValid by remember { mutableStateOf(true) }
                 CompressionOptionsContent(
                     options = options,
