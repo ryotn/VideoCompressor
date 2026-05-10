@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     val videoPickerLauncher = rememberLauncherForActivityResult(
-                        ActivityResultContracts.GetContent()
+                        ActivityResultContracts.OpenDocument()
                     ) { uri ->
                         uri?.let { vm.onVideoSelected(it) }
                     }
@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
 
                     MainScreen(
                         viewModel = vm,
-                        onSelectVideo = { videoPickerLauncher.launch("video/*") },
+                        onSelectVideo = { videoPickerLauncher.launch(arrayOf("video/*")) },
                         onSelectSaveDirectory = { saveDirectoryLauncher.launch(saveDirectoryUri) }
                     )
                 }

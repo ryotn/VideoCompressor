@@ -13,7 +13,6 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.documentfile.provider.DocumentFile
-import android.provider.OpenableColumns
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.ryotn.videocompressor.MainActivity
 import com.ryotn.videocompressor.R
@@ -289,22 +288,8 @@ class CompressionService : Service() {
     }
 
     private fun buildOutputFileName(directory: DocumentFile, sourceUri: Uri): String {
-        var originalName: String? = null
-        try {
-            contentResolver.query(sourceUri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (nameIndex >= 0) {
-                        originalName = cursor.getString(nameIndex)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to get original filename", e)
-        }
-        val finalOriginalName = originalName?.takeIf { it.isNotBlank() } ?: "compressed_video.mp4"
-
-        val baseName = if (finalOriginalName.contains('.')) finalOriginalName.substringBeforeLast('.') else finalOriginalName
+        val originalName = DocumentFile.fromSingleUri(this, sourceUri)?.name?.takeIf { it.isNotBlank() } ?: "compressed_video.mp4"
+        val baseName = if (originalName.contains('.')) originalName.substringBeforeLast('.') else originalName
         val ext = ".mp4"
 
         var currentName = "$baseName$ext"
