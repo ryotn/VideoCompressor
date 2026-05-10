@@ -48,7 +48,6 @@
     <string name="compressed_size_label">圧縮後: %s</string>
     <string name="compression_ratio">圧縮率: %.1f%%</string>
     <string name="save_destination">保存先: %s</string>
-    <string name="estimated_size_label">予想ファイルサイズ: %s</string>
     <string name="gb_format">%.1f GB</string>
     <string name="mb_format">%.1f MB</string>
     <string name="mbps_format">%.1f Mbps</string>
