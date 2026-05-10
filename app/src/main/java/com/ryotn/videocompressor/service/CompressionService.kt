@@ -72,14 +72,14 @@ class CompressionService : Service() {
                 val durationMs = intent.getLongExtra(EXTRA_DURATION_MS, 0L)
                 val originalBitrate = intent.getLongExtra(EXTRA_ORIGINAL_BITRATE, 0L)
                 val originalAudioBitrate = intent.getLongExtra(EXTRA_ORIGINAL_AUDIO_BITRATE, 0L)
-                @Suppress("DEPRECATION")
-                val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    intent.getSerializableExtra(EXTRA_OPTIONS, CompressionOptions::class.java)
-                } else {
-                    intent.getSerializableExtra(EXTRA_OPTIONS) as? CompressionOptions
-                } ?: CompressionOptions()
+                val options = intent.getSerializableExtra(EXTRA_OPTIONS, CompressionOptions::class.java)
+                    ?: CompressionOptions()
 
-                startForeground(NOTIFICATION_ID, buildNotification(0f))
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification(0f),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
                 startCompression(sourceUri, outputDirectoryUri, options, durationMs, originalBitrate, originalAudioBitrate)
             }
             ACTION_CANCEL -> {
@@ -180,17 +180,15 @@ class CompressionService : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.notification_channel_name),
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = getString(R.string.notification_channel_description)
-            }
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            getString(R.string.notification_channel_name),
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = getString(R.string.notification_channel_description)
         }
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(channel)
     }
 
     private fun buildNotification(progress: Float): Notification {

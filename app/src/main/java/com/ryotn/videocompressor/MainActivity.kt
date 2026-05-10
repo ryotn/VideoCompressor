@@ -66,9 +66,7 @@ class MainActivity : ComponentActivity() {
 
                     LaunchedEffect(Unit) {
                         val perms = buildList {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                add(Manifest.permission.POST_NOTIFICATIONS)
-                            }
+                            add(Manifest.permission.POST_NOTIFICATIONS)
                         }
                         val notGranted = perms.filter {
                             ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
