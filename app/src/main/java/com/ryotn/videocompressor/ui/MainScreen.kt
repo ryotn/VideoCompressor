@@ -351,7 +351,7 @@ private fun CompressionOptionsContent(
             VideoCodec.entries.forEach { codec ->
                 DropdownMenuItem(
                     text = {
-                        val isOriginal = videoInfo?.videoCodecMime != null && codec.mimeType.equals(videoInfo.videoCodecMime, ignoreCase = true)
+                        val isOriginal = codec.mimeType.equals(videoInfo?.videoCodecMime, ignoreCase = true)
                         val labelStr = stringResource(codec.labelResId)
                         val displayText = if (isOriginal) stringResource(R.string.codec_original_format, labelStr) else labelStr
                         Text(displayText)
