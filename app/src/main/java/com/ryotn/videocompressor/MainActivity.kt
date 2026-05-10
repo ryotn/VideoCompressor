@@ -67,10 +67,7 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(Unit) {
                         val perms = buildList {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                add(Manifest.permission.READ_MEDIA_VIDEO)
                                 add(Manifest.permission.POST_NOTIFICATIONS)
-                            } else {
-                                add(Manifest.permission.READ_EXTERNAL_STORAGE)
                             }
                         }
                         val notGranted = perms.filter {
