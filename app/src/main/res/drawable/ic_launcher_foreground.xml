@@ -3,7 +3,29 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Film strip with sprocket holes (evenOdd creates transparent holes through the white strip) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,27L27,27L27,81L81,81L81,27Z"/>
+        android:fillType="evenOdd"
+        android:pathData="M18,40 L90,40 L90,68 L18,68 Z
+            M23,35 L31,35 L31,43 L23,43 Z
+            M41,35 L49,35 L49,43 L41,43 Z
+            M59,35 L67,35 L67,43 L59,43 Z
+            M77,35 L85,35 L85,43 L77,43 Z
+            M23,65 L31,65 L31,73 L23,73 Z
+            M41,65 L49,65 L49,73 L41,73 Z
+            M59,65 L67,65 L67,73 L59,73 Z
+            M77,65 L85,65 L85,73 L77,73 Z"/>
+    <!-- Play triangle (golden yellow) -->
+    <path
+        android:fillColor="#FFD600"
+        android:pathData="M43,48 L43,60 L62,54 Z"/>
+    <!-- Left compression arrow pointing right -->
+    <path
+        android:fillColor="#FFD600"
+        android:pathData="M10,54 L18,47 L18,61 Z"/>
+    <!-- Right compression arrow pointing left -->
+    <path
+        android:fillColor="#FFD600"
+        android:pathData="M98,54 L90,47 L90,61 Z"/>
 </vector>
