@@ -119,30 +119,6 @@ fun MainScreen(
                     viewModel = viewModel,
                     onValidityChanged = { isDirectInputValid = it }
                 )
-
-                videoInfo?.let { info ->
-                    val estimatedMb = remember(options, info) {
-                        val estimatedVideoBitrate = options.computeTargetVideoBitrateBps(info.bitrateBps)
-                        val estimatedAudioBitrate = options.computeTargetAudioBitrateBps(info.audioBitrateBps)
-                        val estimatedSizeInBytes = ((estimatedVideoBitrate + estimatedAudioBitrate) * (info.durationMs / 1000.0) / 8.0).toLong()
-                        estimatedSizeInBytes / (1024.0 * 1024.0)
-                    }
-                    val displayEstimatedSize = if (estimatedMb >= 1024) {
-                        stringResource(R.string.gb_format, estimatedMb / 1024)
-                    } else {
-                        stringResource(R.string.mb_format, estimatedMb)
-                    }
-
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Box(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = stringResource(R.string.estimated_size_label, displayEstimatedSize),
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                    }
-                }
-
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = { currentStep = ScreenStep.Selection },
