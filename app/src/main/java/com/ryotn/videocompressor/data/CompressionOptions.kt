@@ -71,4 +71,21 @@ data class CompressionOptions(
             if (sourceFrameRate > 0) minOf(target, sourceFrameRate.toInt()) else target
         }
     }
+
+    fun computeEstimatedSizeBytes(videoInfo: VideoInfo?): Long {
+        if (videoInfo == null || videoInfo.durationMs <= 0) return 0L
+        val videoBitrateBps = when (bitrateMode) {
+            BitrateMode.PERCENTAGE -> (videoInfo.bitrateBps * (bitratePercentage / 100.0)).toLong()
+            BitrateMode.DIRECT -> bitrateDirectKbps * 1000L
+            BitrateMode.PRESET -> bitratePreset.kbps * 1000L
+        }
+        val audioBitrateBps = if (removeAudio) 0L else when (audioBitrateMode) {
+            BitrateMode.PERCENTAGE -> (videoInfo.audioBitrateBps * (audioBitratePercentage / 100.0)).toLong()
+            BitrateMode.DIRECT -> audioBitrateDirectKbps * 1000L
+            BitrateMode.PRESET -> audioBitratePreset.kbps * 1000L
+        }
+        val totalBitrateBps = videoBitrateBps + audioBitrateBps
+        val durationSeconds = videoInfo.durationMs / 1000.0
+        return (totalBitrateBps * durationSeconds / 8.0).toLong()
+    }
 }
