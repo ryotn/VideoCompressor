@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
 import com.ryotn.videocompressor.R
 import com.ryotn.videocompressor.data.AudioBitratePreset
 import com.ryotn.videocompressor.data.BitrateMode
@@ -416,7 +417,13 @@ private fun CompressionOptionsContent(
             Tab(
                 selected = selectedTabIndex == index,
                 onClick = { onTabSelected(index) },
-                text = { Text(stringResource(titleResId)) }
+                text = {
+                    Text(
+                        text = stringResource(titleResId),
+                        textAlign = TextAlign.Center,
+                        maxLines = 2
+                    )
+                }
             )
         }
     }
