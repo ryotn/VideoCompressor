@@ -128,7 +128,7 @@ class VideoTranscoder(
      */
     fun transcode(): Boolean {
         val videoExtractor = MediaExtractor()
-        val audioExtractor = MediaExtractor()
+        var audioExtractor: MediaExtractor? = null
         var encoder: MediaCodec? = null
         var decoder: MediaCodec? = null
         var encoderInputSurface: Surface? = null
@@ -137,7 +137,6 @@ class VideoTranscoder(
 
         return try {
             videoExtractor.setDataSource(inputFile.absolutePath)
-            audioExtractor.setDataSource(inputFile.absolutePath)
 
             // ---- find tracks ----
             val videoTrackIdx = findTrack(videoExtractor, "video/")
@@ -213,10 +212,19 @@ class VideoTranscoder(
             }
 
             // Probe audio format now so we can add it as a track before muxer.start()
-            val audioTrackIdx = findTrack(audioExtractor, "audio/")
-            val audioFormat: MediaFormat? = if (audioTrackIdx >= 0)
-                audioExtractor.getTrackFormat(audioTrackIdx) else null
-            val transcodedAudio = transcodeAudioTrack(targetAudioBitrateBps)
+            var audioTrackIdx = -1
+            var audioFormat: MediaFormat? = null
+            var transcodedAudio: Pair<MediaFormat, List<EncodedAudioSample>>? = null
+
+            if (!options.removeAudio) {
+                audioExtractor = MediaExtractor()
+                audioExtractor.setDataSource(inputFile.absolutePath)
+                audioTrackIdx = findTrack(audioExtractor, "audio/")
+                if (audioTrackIdx >= 0) {
+                    audioFormat = audioExtractor.getTrackFormat(audioTrackIdx)
+                }
+                transcodedAudio = transcodeAudioTrack(targetAudioBitrateBps)
+            }
 
             // ---- start codecs ----
             videoExtractor.selectTrack(videoTrackIdx)
@@ -341,7 +349,7 @@ class VideoTranscoder(
                     audioInfo.set(0, sample.data.size, sample.presentationTimeUs, sample.flags)
                     muxer.writeSampleData(muxerAudioTrack, audioBuf, audioInfo)
                 }
-            } else if (audioTrackIdx >= 0 && muxerStarted && muxerAudioTrack >= 0) {
+            } else if (audioTrackIdx >= 0 && muxerStarted && muxerAudioTrack >= 0 && audioExtractor != null) {
                 audioExtractor.selectTrack(audioTrackIdx)
                 val audioBuf = ByteBuffer.allocate(256 * 1024)
                 val audioInfo = MediaCodec.BufferInfo()
@@ -371,7 +379,7 @@ class VideoTranscoder(
             }
             try { muxer?.release() } catch (e: Exception) { Log.w(TAG, "muxer release failed", e) }
             videoExtractor.release()
-            audioExtractor.release()
+            audioExtractor?.release()
         }
     }
 

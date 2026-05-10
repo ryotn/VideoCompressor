@@ -59,7 +59,8 @@ data class CompressionOptions(
     val resolutionPercentage: Int = 100,
     val resolutionDirectWidth: Int = 1280,
     val resolutionDirectHeight: Int = 720,
-    val resolutionPreset: ResolutionPreset = ResolutionPreset.HD
+    val resolutionPreset: ResolutionPreset = ResolutionPreset.HD,
+    val removeAudio: Boolean = false
 ) : Serializable {
     fun computeTargetFrameRateFps(sourceFrameRate: Float): Int {
         return when (frameRateMode) {

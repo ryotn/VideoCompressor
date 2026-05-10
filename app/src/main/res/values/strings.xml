@@ -13,6 +13,7 @@
     <string name="bitrate_options">ビットレート</string>
     <string name="video_bitrate_options">動画ビットレート</string>
     <string name="audio_bitrate_options">音声ビットレート</string>
+    <string name="remove_audio">音声なし</string>
     <string name="resolution_options">解像度</string>
     <string name="frame_rate_options">フレームレート</string>
     <string name="percentage">%指定</string>
