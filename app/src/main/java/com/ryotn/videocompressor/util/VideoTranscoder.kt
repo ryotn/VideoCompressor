@@ -166,9 +166,9 @@ class VideoTranscoder(
             }
 
             val (targetW, targetH) = computeTargetDimensions(srcWidth, srcHeight, rotation)
-            val targetBitrateBps = computeTargetBitrateBps().coerceAtLeast(MIN_BITRATE_BPS)
-            val targetFrameRateFps = options.computeTargetFrameRateFps(sourceFrameRate).coerceAtLeast(1)
-            val targetAudioBitrateBps = computeTargetAudioBitrateBps().coerceAtLeast(MIN_AUDIO_BITRATE_BPS)
+            val targetBitrateBps = options.computeTargetVideoBitrateBps(originalBitrate)
+            val targetFrameRateFps = options.computeTargetFrameRateFps(sourceFrameRate)
+            val targetAudioBitrateBps = options.computeTargetAudioBitrateBps(originalAudioBitrate)
             Log.d(
                 TAG,
                 "src=${srcWidth}x${srcHeight} → dst=${targetW}x${targetH} bitrate=${targetBitrateBps}bps fps=${targetFrameRateFps}"
@@ -425,28 +425,6 @@ class VideoTranscoder(
 
     /** Returns [value] rounded down to the nearest even number (required by H.264 encoder). */
     private fun makeEven(value: Int): Int = if (value % 2 != 0) value - 1 else value
-
-    private fun computeTargetBitrateBps(): Long {
-        return when (options.bitrateMode) {
-            BitrateMode.PERCENTAGE -> {
-                val base = if (originalBitrate > 0) originalBitrate else DEFAULT_BITRATE_BPS
-                base * options.bitratePercentage / 100L
-            }
-            BitrateMode.DIRECT -> options.bitrateDirectKbps * 1000L
-            BitrateMode.PRESET -> options.bitratePreset.kbps * 1000L
-        }
-    }
-
-    private fun computeTargetAudioBitrateBps(): Long {
-        return when (options.audioBitrateMode) {
-            BitrateMode.PERCENTAGE -> {
-                val base = if (originalAudioBitrate > 0) originalAudioBitrate else DEFAULT_AUDIO_BITRATE_BPS
-                base * options.audioBitratePercentage / 100L
-            }
-            BitrateMode.DIRECT -> options.audioBitrateDirectKbps * 1000L
-            BitrateMode.PRESET -> options.audioBitratePreset.kbps * 1000L
-        }
-    }
 
     private fun shouldRenderFrame(ptsUs: Long, nextRenderPtsUs: Long): Boolean {
         if (nextRenderPtsUs == Long.MIN_VALUE) return true

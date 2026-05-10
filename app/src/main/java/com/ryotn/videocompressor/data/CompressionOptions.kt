@@ -71,4 +71,28 @@ data class CompressionOptions(
             if (sourceFrameRate > 0) minOf(target, sourceFrameRate.toInt()) else target
         }
     }
+
+    fun computeTargetVideoBitrateBps(originalBitrate: Long): Long {
+        val bitrate = when (bitrateMode) {
+            BitrateMode.PERCENTAGE -> {
+                val base = if (originalBitrate > 0) originalBitrate else 2_000_000L
+                base * bitratePercentage / 100L
+            }
+            BitrateMode.DIRECT -> bitrateDirectKbps * 1000L
+            BitrateMode.PRESET -> bitratePreset.kbps * 1000L
+        }
+        return bitrate.coerceAtLeast(100_000L) // Matches MIN_BITRATE_BPS
+    }
+
+    fun computeTargetAudioBitrateBps(originalAudioBitrate: Long): Long {
+        val bitrate = when (audioBitrateMode) {
+            BitrateMode.PERCENTAGE -> {
+                val base = if (originalAudioBitrate > 0) originalAudioBitrate else 128_000L
+                base * audioBitratePercentage / 100L
+            }
+            BitrateMode.DIRECT -> audioBitrateDirectKbps * 1000L
+            BitrateMode.PRESET -> audioBitratePreset.kbps * 1000L
+        }
+        return bitrate.coerceAtLeast(32_000L) // Matches MIN_AUDIO_BITRATE_BPS
+    }
 }
