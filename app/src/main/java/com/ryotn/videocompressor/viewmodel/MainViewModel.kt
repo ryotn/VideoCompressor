@@ -193,8 +193,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             putExtra(CompressionService.EXTRA_ORIGINAL_HEIGHT, info.height)
             putExtra(CompressionService.EXTRA_ORIGINAL_SIZE, info.sizeBytes)
         }
-        context.startForegroundService(intent)
-        _compressionState.value = CompressionState.InProgress(0f, 0L)
+        try {
+            context.startForegroundService(intent)
+            _compressionState.value = CompressionState.InProgress(0f, 0L)
+        } catch (e: Exception) {
+            _compressionState.value = CompressionState.Failed("Failed to start service: ${e.message}")
+        }
     }
 
     fun cancelCompression() {

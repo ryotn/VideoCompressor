@@ -75,7 +75,11 @@ class CompressionService : Service() {
                 val options = intent.getSerializableExtra(EXTRA_OPTIONS, CompressionOptions::class.java)
                     ?: CompressionOptions()
 
-                startForeground(NOTIFICATION_ID, buildNotification(0f))
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification(0f),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
                 startCompression(sourceUri, outputDirectoryUri, options, durationMs, originalBitrate, originalAudioBitrate)
             }
             ACTION_CANCEL -> {
