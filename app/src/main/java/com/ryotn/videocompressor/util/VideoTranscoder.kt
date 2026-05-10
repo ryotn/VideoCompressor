@@ -149,8 +149,17 @@ class VideoTranscoder(
             val srcHeight = videoInputFormat.getInteger(MediaFormat.KEY_HEIGHT)
             val rotation = if (videoInputFormat.containsKey(MediaFormat.KEY_ROTATION))
                 videoInputFormat.getInteger(MediaFormat.KEY_ROTATION) else 0
-            val sourceFrameRate = if (videoInputFormat.containsKey(MediaFormat.KEY_FRAME_RATE))
-                videoInputFormat.getInteger(MediaFormat.KEY_FRAME_RATE) else 30
+            val sourceFrameRate = if (videoInputFormat.containsKey(MediaFormat.KEY_FRAME_RATE)) {
+                try {
+                    videoInputFormat.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
+                } catch (e: Exception) {
+                    try {
+                        videoInputFormat.getFloat(MediaFormat.KEY_FRAME_RATE)
+                    } catch (e2: Exception) {
+                        30f
+                    }
+                }
+            } else 30f
 
             // Strip the rotation flag from the format passed to the decoder.
             // When KEY_ROTATION is present, some hardware decoders apply the rotation to their
@@ -443,13 +452,14 @@ class VideoTranscoder(
         }
     }
 
-    private fun computeTargetFrameRateFps(sourceFrameRate: Int): Int {
+    private fun computeTargetFrameRateFps(sourceFrameRate: Float): Int {
         return when (options.frameRateMode) {
+            FrameRateMode.PERCENTAGE -> (sourceFrameRate * (options.frameRatePercentage / 100f)).toInt()
             FrameRateMode.DIRECT -> options.frameRateDirectFps
             FrameRateMode.PRESET -> options.frameRatePreset.fps
         }.coerceAtLeast(1).let { target ->
             // Frame interpolation is not implemented in this pipeline, so cap to source fps.
-            if (sourceFrameRate > 0) minOf(target, sourceFrameRate) else target
+            if (sourceFrameRate > 0) minOf(target, sourceFrameRate.toInt()) else target
         }
     }
 

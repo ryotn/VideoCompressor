@@ -419,6 +419,7 @@ private fun CompressionOptionsContent(
                 label = {
                     Text(
                         when (mode) {
+                            FrameRateMode.PERCENTAGE -> stringResource(R.string.percentage)
                             FrameRateMode.DIRECT -> stringResource(R.string.direct)
                             FrameRateMode.PRESET -> stringResource(R.string.preset)
                         }
@@ -429,6 +430,19 @@ private fun CompressionOptionsContent(
     }
 
     when (options.frameRateMode) {
+        FrameRateMode.PERCENTAGE -> {
+            Text(stringResource(R.string.progress_percentage, options.frameRatePercentage))
+            androidx.compose.material3.Slider(
+                value = options.frameRatePercentage.toFloat(),
+                onValueChange = { viewModel.updateOptions(options.copy(frameRatePercentage = it.toInt())) },
+                valueRange = 10f..100f,
+                steps = 17
+            )
+            if (videoInfo != null && videoInfo.frameRateFps > 0) {
+                val targetFps = computeTargetFrameRateFps(options, videoInfo.frameRateFps)
+                Text(stringResource(R.string.output_frame_rate, targetFps), style = MaterialTheme.typography.bodySmall)
+            }
+        }
         FrameRateMode.DIRECT -> {
             OutlinedTextField(
                 value = frameRateDirectText,
@@ -568,6 +582,16 @@ private fun computePresetDisplayDimensions(preset: ResolutionPreset, videoInfo: 
     val width = makeEven((srcW * scale).toInt().coerceAtLeast(2))
     val height = makeEven((srcH * scale).toInt().coerceAtLeast(2))
     return width to height
+}
+
+private fun computeTargetFrameRateFps(options: CompressionOptions, sourceFrameRate: Float): Int {
+    return when (options.frameRateMode) {
+        FrameRateMode.PERCENTAGE -> (sourceFrameRate * (options.frameRatePercentage / 100f)).toInt()
+        FrameRateMode.DIRECT -> options.frameRateDirectFps
+        FrameRateMode.PRESET -> options.frameRatePreset.fps
+    }.coerceAtLeast(1).let { target ->
+        if (sourceFrameRate > 0) minOf(target, sourceFrameRate.toInt()) else target
+    }
 }
 
 /** Computes the actual output dimensions for the current resolution settings, mirroring VideoTranscoder logic. */

@@ -6,7 +6,7 @@ import java.io.Serializable
 
 enum class BitrateMode { PERCENTAGE, DIRECT, PRESET }
 enum class ResolutionMode { PERCENTAGE, DIRECT, PRESET }
-enum class FrameRateMode { DIRECT, PRESET }
+enum class FrameRateMode { PERCENTAGE, DIRECT, PRESET }
 
 enum class BitratePreset(@StringRes val labelResId: Int, val kbps: Int) {
     LOW(R.string.preset_low, 500),
@@ -45,6 +45,7 @@ data class CompressionOptions(
     val audioBitrateDirectKbps: Int = 128,
     val audioBitratePreset: AudioBitratePreset = AudioBitratePreset.MEDIUM,
     val frameRateMode: FrameRateMode = FrameRateMode.PRESET,
+    val frameRatePercentage: Int = 100,
     val frameRateDirectFps: Int = 30,
     val frameRatePreset: FrameRatePreset = FrameRatePreset.STANDARD,
     val resolutionMode: ResolutionMode = ResolutionMode.PRESET,

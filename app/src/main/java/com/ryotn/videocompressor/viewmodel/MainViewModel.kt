@@ -113,14 +113,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
             val bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toLongOrNull() ?: 0L
             val audioBitrateBps = extractAudioBitrate(context, uri)
+            val frameRateFps = extractVideoFrameRate(context, uri)
             retriever.release()
             // If the video has a 90° or 270° rotation tag, the coded dimensions are swapped
             // relative to the display dimensions. Store display dimensions so the UI shows
             // the correct portrait/landscape orientation.
             val (displayWidth, displayHeight) = if (rotation == 90 || rotation == 270) height to width else width to height
-            VideoInfo(uri, displayName, sizeBytes, durationMs, displayWidth, displayHeight, bitrate, audioBitrateBps)
+            VideoInfo(uri, displayName, sizeBytes, durationMs, displayWidth, displayHeight, bitrate, audioBitrateBps, frameRateFps)
         } catch (e: Exception) {
             null
+        }
+    }
+
+    private fun extractVideoFrameRate(context: Context, uri: Uri): Float {
+        val extractor = MediaExtractor()
+        return try {
+            extractor.setDataSource(context, uri, null)
+            for (trackIndex in 0 until extractor.trackCount) {
+                val format = extractor.getTrackFormat(trackIndex)
+                val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+                if (!mime.startsWith("video/")) continue
+                if (format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
+                    return try {
+                        format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
+                    } catch (e: Exception) {
+                        try {
+                            format.getFloat(MediaFormat.KEY_FRAME_RATE)
+                        } catch (e2: Exception) {
+                            0f
+                        }
+                    }
+                }
+            }
+            0f
+        } catch (_: Exception) {
+            0f
+        } finally {
+            extractor.release()
         }
     }
 
