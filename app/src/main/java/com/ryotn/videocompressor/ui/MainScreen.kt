@@ -558,7 +558,7 @@ private fun SimpleModeContent(
         )
         androidx.compose.material3.Slider(
             value = simpleOptions.targetSizeMb.toFloat(),
-            onValueChange = { viewModel.updateSimpleOptions(simpleOptions.copy(targetSizeMb = it.toInt().coerceAtLeast(10))) },
+            onValueChange = { viewModel.updateSimpleOptions(simpleOptions.copy(targetSizeMb = it.toInt())) },
             valueRange = 10f..4000f
         )
 
@@ -577,7 +577,12 @@ private fun SimpleModeContent(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(stringResource(R.string.computed_settings), style = MaterialTheme.typography.titleSmall)
-                    Text(stringResource(R.string.computed_codec_label, stringResource(R.string.codec_h265)))
+                    val actualCodec = if (viewModel.supportedVideoCodecs.contains(VideoCodec.H265)) {
+                        VideoCodec.H265
+                    } else {
+                        VideoCodec.H264
+                    }
+                    Text(stringResource(R.string.computed_codec_label, stringResource(actualCodec.labelResId)))
                     Text(stringResource(R.string.computed_fps_label, SimpleCompressionOptions.FRAME_RATE_FPS))
                     val (outW, outH) = computePresetDisplayDimensions(resolution, videoInfo)
                     Text(stringResource(R.string.computed_resolution_label, outW, outH))
