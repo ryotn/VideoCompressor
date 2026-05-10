@@ -109,10 +109,15 @@ fun MainScreen(
                 )
             }
             ScreenStep.Options -> {
+                // Initial validity is true because raw text states are initialised from Int option
+                // values whose toString() is always non-empty. LaunchedEffect keeps the parent
+                // state in sync whenever the user clears a direct-input field.
+                var isDirectInputValid by remember { mutableStateOf(true) }
                 CompressionOptionsContent(
                     options = options,
                     videoInfo = videoInfo,
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    onValidityChanged = { isDirectInputValid = it }
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
@@ -125,7 +130,7 @@ fun MainScreen(
                     Button(
                         onClick = { viewModel.startCompression() },
                         modifier = Modifier.weight(1f),
-                        enabled = videoInfo != null && saveDirectoryUri != null && state is CompressionState.Idle
+                        enabled = videoInfo != null && saveDirectoryUri != null && state is CompressionState.Idle && isDirectInputValid
                     ) {
                         Text(stringResource(R.string.start_compression))
                     }
@@ -238,8 +243,34 @@ private fun SelectionStepContent(
 private fun CompressionOptionsContent(
     options: CompressionOptions,
     videoInfo: VideoInfo?,
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    onValidityChanged: (Boolean) -> Unit
 ) {
+    // Raw text states for direct input fields, reset when the corresponding mode changes
+    var bitrateDirectText by rememberSaveable(options.bitrateMode) {
+        mutableStateOf(options.bitrateDirectKbps.toString())
+    }
+    var audioBitrateDirectText by rememberSaveable(options.audioBitrateMode) {
+        mutableStateOf(options.audioBitrateDirectKbps.toString())
+    }
+    var frameRateDirectText by rememberSaveable(options.frameRateMode) {
+        mutableStateOf(options.frameRateDirectFps.toString())
+    }
+    var resolutionDirectWidthText by rememberSaveable(options.resolutionMode) {
+        mutableStateOf(options.resolutionDirectWidth.toString())
+    }
+    var resolutionDirectHeightText by rememberSaveable(options.resolutionMode) {
+        mutableStateOf(options.resolutionDirectHeight.toString())
+    }
+
+    val isValid =
+        (options.bitrateMode != BitrateMode.DIRECT || bitrateDirectText.isNotEmpty()) &&
+        (options.audioBitrateMode != BitrateMode.DIRECT || audioBitrateDirectText.isNotEmpty()) &&
+        (options.frameRateMode != FrameRateMode.DIRECT || frameRateDirectText.isNotEmpty()) &&
+        (options.resolutionMode != ResolutionMode.DIRECT ||
+            (resolutionDirectWidthText.isNotEmpty() && resolutionDirectHeightText.isNotEmpty()))
+    LaunchedEffect(isValid) { onValidityChanged(isValid) }
+
     Text(stringResource(R.string.compression_options), style = MaterialTheme.typography.titleMedium)
 
     Text(stringResource(R.string.bitrate_options), style = MaterialTheme.typography.titleSmall)
@@ -274,10 +305,12 @@ private fun CompressionOptionsContent(
         }
         BitrateMode.DIRECT -> {
             OutlinedTextField(
-                value = options.bitrateDirectKbps.toString(),
+                value = bitrateDirectText,
                 onValueChange = { v ->
+                    bitrateDirectText = v
                     v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(bitrateDirectKbps = it)) }
                 },
+                isError = bitrateDirectText.isEmpty(),
                 label = { Text(stringResource(R.string.kbps)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
@@ -335,10 +368,12 @@ private fun CompressionOptionsContent(
         }
         BitrateMode.DIRECT -> {
             OutlinedTextField(
-                value = options.audioBitrateDirectKbps.toString(),
+                value = audioBitrateDirectText,
                 onValueChange = { v ->
+                    audioBitrateDirectText = v
                     v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(audioBitrateDirectKbps = it)) }
                 },
+                isError = audioBitrateDirectText.isEmpty(),
                 label = { Text(stringResource(R.string.kbps)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
@@ -386,10 +421,12 @@ private fun CompressionOptionsContent(
     when (options.frameRateMode) {
         FrameRateMode.DIRECT -> {
             OutlinedTextField(
-                value = options.frameRateDirectFps.toString(),
+                value = frameRateDirectText,
                 onValueChange = { v ->
+                    frameRateDirectText = v
                     v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(frameRateDirectFps = it)) }
                 },
+                isError = frameRateDirectText.isEmpty(),
                 label = { Text(stringResource(R.string.fps)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
@@ -451,19 +488,23 @@ private fun CompressionOptionsContent(
         ResolutionMode.DIRECT -> {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    value = options.resolutionDirectWidth.toString(),
+                    value = resolutionDirectWidthText,
                     onValueChange = { v ->
+                        resolutionDirectWidthText = v
                         v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(resolutionDirectWidth = it)) }
                     },
+                    isError = resolutionDirectWidthText.isEmpty(),
                     label = { Text("幅（上限）") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
-                    value = options.resolutionDirectHeight.toString(),
+                    value = resolutionDirectHeightText,
                     onValueChange = { v ->
+                        resolutionDirectHeightText = v
                         v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(resolutionDirectHeight = it)) }
                     },
+                    isError = resolutionDirectHeightText.isEmpty(),
                     label = { Text("高さ（上限）") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f)
