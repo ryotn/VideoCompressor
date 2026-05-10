@@ -48,8 +48,8 @@ class MainActivity : ComponentActivity() {
                     }
 
                     var permissionsGranted by remember { mutableStateOf(false) }
-                    var showNotificationRationale by remember { mutableStateOf(false) }
-                    var showSaveDirectoryRationale by remember { mutableStateOf(false) }
+                    var showNotificationRationale by rememberSaveable { mutableStateOf(false) }
+                    var showSaveDirectoryRationale by rememberSaveable { mutableStateOf(false) }
                     val saveDirectoryUri by vm.saveDirectoryUri.collectAsState()
 
                     val perms = buildList {
