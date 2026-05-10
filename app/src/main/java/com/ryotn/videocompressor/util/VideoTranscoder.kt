@@ -152,7 +152,17 @@ class VideoTranscoder(
             val sourceFrameRate = if (videoInputFormat.containsKey(MediaFormat.KEY_FRAME_RATE))
                 videoInputFormat.getInteger(MediaFormat.KEY_FRAME_RATE) else 30
 
-            val (targetW, targetH) = computeTargetDimensions(srcWidth, srcHeight)
+            // Strip the rotation flag from the format passed to the decoder.
+            // When KEY_ROTATION is present, some hardware decoders apply the rotation to their
+            // output via the SurfaceTexture transform matrix. This causes portrait content to be
+            // rendered into a landscape encoder surface (or vice-versa), resulting in a
+            // stretched/squished output. We preserve the rotation value and re-apply it to the
+            // muxer output instead, so media players display the video correctly.
+            if (videoInputFormat.containsKey(MediaFormat.KEY_ROTATION)) {
+                videoInputFormat.setInteger(MediaFormat.KEY_ROTATION, 0)
+            }
+
+            val (targetW, targetH) = computeTargetDimensions(srcWidth, srcHeight, rotation)
             val targetBitrateBps = computeTargetBitrateBps().coerceAtLeast(MIN_BITRATE_BPS)
             val targetFrameRateFps = computeTargetFrameRateFps(sourceFrameRate).coerceAtLeast(1)
             val targetAudioBitrateBps = computeTargetAudioBitrateBps().coerceAtLeast(MIN_AUDIO_BITRATE_BPS)
@@ -361,7 +371,12 @@ class VideoTranscoder(
     // Target dimension / bitrate helpers
     // ------------------------------------------------------------------------------------------
 
-    private fun computeTargetDimensions(srcW: Int, srcH: Int): Pair<Int, Int> {
+    private fun computeTargetDimensions(srcW: Int, srcH: Int, rotation: Int = 0): Pair<Int, Int> {
+        // For videos with 90° or 270° rotation the coded dimensions are landscape while the
+        // display dimensions are portrait. User-facing settings (DIRECT/PRESET) are expressed
+        // in display (visible) space, so we must transpose the constraints before applying them
+        // to the coded dimensions used by the encoder.
+        val isRotated = rotation == 90 || rotation == 270
         return when (options.resolutionMode) {
             ResolutionMode.PERCENTAGE -> {
                 val scale = options.resolutionPercentage / 100f
@@ -369,7 +384,15 @@ class VideoTranscoder(
                 val h = makeEven((srcH * scale).toInt().coerceAtLeast(2))
                 Pair(w, h)
             }
-            ResolutionMode.DIRECT -> fitDimensions(srcW, srcH, options.resolutionDirectWidth, options.resolutionDirectHeight)
+            ResolutionMode.DIRECT -> {
+                // User input is in display (visible) orientation. For rotated videos, swap
+                // the width/height constraints to match the coded orientation.
+                val (maxW, maxH) = if (isRotated)
+                    options.resolutionDirectHeight to options.resolutionDirectWidth
+                else
+                    options.resolutionDirectWidth to options.resolutionDirectHeight
+                fitDimensions(srcW, srcH, maxW, maxH)
+            }
             ResolutionMode.PRESET -> fitDimensions(srcW, srcH, options.resolutionPreset.width, options.resolutionPreset.height)
         }
     }

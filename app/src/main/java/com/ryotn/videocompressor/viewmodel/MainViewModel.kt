@@ -110,10 +110,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
             val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
             val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
             val bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toLongOrNull() ?: 0L
             val audioBitrateBps = extractAudioBitrate(context, uri)
             retriever.release()
-            VideoInfo(uri, displayName, sizeBytes, durationMs, width, height, bitrate, audioBitrateBps)
+            // If the video has a 90° or 270° rotation tag, the coded dimensions are swapped
+            // relative to the display dimensions. Store display dimensions so the UI shows
+            // the correct portrait/landscape orientation.
+            val (displayWidth, displayHeight) = if (rotation == 90 || rotation == 270) height to width else width to height
+            VideoInfo(uri, displayName, sizeBytes, durationMs, displayWidth, displayHeight, bitrate, audioBitrateBps)
         } catch (e: Exception) {
             null
         }
