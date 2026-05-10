@@ -202,7 +202,7 @@ class CompressionService : Service() {
         val progressInt = (progress * 100).toInt()
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.compression_progress))
-            .setContentText("$progressInt%")
+            .setContentText(getString(R.string.progress_percentage, progressInt))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pendingIntent)
             .setProgress(100, progressInt, false)
