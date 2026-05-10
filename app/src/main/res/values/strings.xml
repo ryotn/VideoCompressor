@@ -5,11 +5,6 @@
     <string name="start_compression">圧縮開始</string>
     <string name="cancel_compression">圧縮をキャンセル</string>
     <string name="compression_options">圧縮オプション</string>
-    <string name="codec_options">コーデック</string>
-    <string name="codec_same_as_original_suffix"> (元と同じ)</string>
-    <string name="codec_h264">H.264(AVC)</string>
-    <string name="codec_h265">H.265(HEVC)</string>
-    <string name="codec_av1">AV1</string>
     <string name="bitrate_options">ビットレート</string>
     <string name="video_bitrate_options">動画ビットレート</string>
     <string name="audio_bitrate_options">音声ビットレート</string>

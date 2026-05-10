@@ -11,6 +11,5 @@ data class VideoInfo(
     val height: Int,
     val bitrateBps: Long,
     val audioBitrateBps: Long,
-    val frameRateFps: Float,
-    val videoMimeType: String? = null
+    val frameRateFps: Float
 )

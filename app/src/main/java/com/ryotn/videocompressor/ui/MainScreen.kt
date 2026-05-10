@@ -45,7 +45,6 @@ import com.ryotn.videocompressor.data.FrameRateMode
 import com.ryotn.videocompressor.data.FrameRatePreset
 import com.ryotn.videocompressor.data.ResolutionMode
 import com.ryotn.videocompressor.data.ResolutionPreset
-import com.ryotn.videocompressor.data.VideoCodec
 import com.ryotn.videocompressor.data.VideoInfo
 import com.ryotn.videocompressor.viewmodel.MainViewModel
 
@@ -283,25 +282,6 @@ private fun CompressionOptionsContent(
     LaunchedEffect(isValid) { onValidityChanged(isValid) }
 
     Text(stringResource(R.string.compression_options), style = MaterialTheme.typography.titleMedium)
-
-    Text(stringResource(R.string.codec_options), style = MaterialTheme.typography.titleSmall)
-    var codecExpanded by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { codecExpanded = true }, modifier = Modifier.fillMaxWidth()) {
-            Text(formatCodecLabel(options.videoCodec, videoInfo))
-        }
-        DropdownMenu(expanded = codecExpanded, onDismissRequest = { codecExpanded = false }) {
-            VideoCodec.entries.forEach { codec ->
-                DropdownMenuItem(
-                    text = { Text(formatCodecLabel(codec, videoInfo)) },
-                    onClick = {
-                        viewModel.updateOptions(options.copy(videoCodec = codec))
-                        codecExpanded = false
-                    }
-                )
-            }
-        }
-    }
 
     Text(stringResource(R.string.bitrate_options), style = MaterialTheme.typography.titleSmall)
     Text(stringResource(R.string.video_bitrate_options), style = MaterialTheme.typography.bodyMedium)
@@ -585,17 +565,6 @@ private fun CompressionOptionsContent(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun formatCodecLabel(codec: VideoCodec, videoInfo: VideoInfo?): String {
-    val baseLabel = stringResource(codec.labelResId)
-    val suffix = stringResource(R.string.codec_same_as_original_suffix)
-    return if (videoInfo?.videoMimeType == codec.mimeType) {
-        "$baseLabel$suffix"
-    } else {
-        baseLabel
     }
 }
 

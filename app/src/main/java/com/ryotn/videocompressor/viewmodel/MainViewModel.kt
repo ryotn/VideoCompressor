@@ -17,7 +17,6 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.ryotn.videocompressor.data.CompressionOptions
 import com.ryotn.videocompressor.data.CompressionState
-import com.ryotn.videocompressor.data.VideoCodec
 import com.ryotn.videocompressor.data.VideoInfo
 import com.ryotn.videocompressor.service.CompressionService
 import kotlinx.coroutines.Dispatchers
@@ -85,14 +84,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 extractVideoInfo(uri)
             }
             _videoInfo.value = info
-            info?.let {
-                val newCodec = when (it.videoMimeType) {
-                    VideoCodec.H265.mimeType -> VideoCodec.H265
-                    VideoCodec.AV1.mimeType -> VideoCodec.AV1
-                    else -> VideoCodec.H264
-                }
-                _compressionOptions.value = _compressionOptions.value.copy(videoCodec = newCodec)
-            }
             _compressionState.value = CompressionState.Idle
         }
     }
@@ -124,19 +115,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val extractor = MediaExtractor()
             val audioBitrateBps: Long
             val frameRateFps: Float
-            var videoMimeType: String? = null
             try {
                 extractor.setDataSource(context, uri, null)
                 audioBitrateBps = extractAudioBitrate(extractor)
                 frameRateFps = extractVideoFrameRate(extractor)
-                for (trackIndex in 0 until extractor.trackCount) {
-                    val format = extractor.getTrackFormat(trackIndex)
-                    val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-                    if (mime.startsWith("video/")) {
-                        videoMimeType = mime
-                        break
-                    }
-                }
             } finally {
                 extractor.release()
             }
@@ -145,7 +127,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // relative to the display dimensions. Store display dimensions so the UI shows
             // the correct portrait/landscape orientation.
             val (displayWidth, displayHeight) = if (rotation == 90 || rotation == 270) height to width else width to height
-            VideoInfo(uri, displayName, sizeBytes, durationMs, displayWidth, displayHeight, bitrate, audioBitrateBps, frameRateFps, videoMimeType)
+            VideoInfo(uri, displayName, sizeBytes, durationMs, displayWidth, displayHeight, bitrate, audioBitrateBps, frameRateFps)
         } catch (e: Exception) {
             null
         }
