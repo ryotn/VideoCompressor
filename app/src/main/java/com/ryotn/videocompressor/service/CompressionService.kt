@@ -271,7 +271,7 @@ class CompressionService : Service() {
         val directory = DocumentFile.fromTreeUri(this, outputDirectoryUri)
             ?.takeIf { it.exists() && it.canWrite() }
             ?: return null
-        val outputName = buildOutputFileName(sourceUri)
+        val outputName = buildOutputFileName(directory, sourceUri)
         val outputFile = directory.createFile("video/mp4", outputName) ?: return null
         return try {
             contentResolver.openOutputStream(outputFile.uri, "w")?.use { output ->
@@ -287,12 +287,21 @@ class CompressionService : Service() {
         }
     }
 
-    private fun buildOutputFileName(sourceUri: Uri): String {
-        val sourceName = DocumentFile.fromSingleUri(this, sourceUri)?.name
-            ?.substringBeforeLast('.')
-            ?.takeIf { it.isNotBlank() }
-            ?: "compressed_video"
-        return "${sourceName}_compressed_${System.currentTimeMillis()}.mp4"
+    private fun buildOutputFileName(directory: DocumentFile, sourceUri: Uri): String {
+        val originalName = DocumentFile.fromSingleUri(this, sourceUri)?.name?.takeIf { it.isNotBlank() } ?: "compressed_video.mp4"
+        val baseName = if (originalName.contains('.')) originalName.substringBeforeLast('.') else originalName
+        val ext = ".mp4"
+
+        var currentName = "$baseName$ext"
+
+        val existingFiles = directory.listFiles().mapNotNull { it.name }.toSet()
+
+        var counter = 1
+        while (existingFiles.contains(currentName)) {
+            currentName = "${baseName}_$counter$ext"
+            counter++
+        }
+        return currentName
     }
 
     override fun onDestroy() {
