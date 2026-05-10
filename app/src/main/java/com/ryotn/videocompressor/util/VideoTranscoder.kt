@@ -177,7 +177,8 @@ class VideoTranscoder(
             // ---- encoder ----
             val targetMime = options.videoCodec.mimeType ?: videoInputFormat.getString(MediaFormat.KEY_MIME) ?: FALLBACK_VIDEO_MIME
             val selectedEncoder = selectEncoder(targetBitrateBps, targetW, targetH, targetMime)
-            val encoderFormat = MediaFormat.createVideoFormat(targetMime, targetW, targetH).apply {
+            val actualMime = if (selectedEncoder.codec.codecInfo.supportedTypes.any { it.equals(targetMime, ignoreCase = true) }) targetMime else FALLBACK_VIDEO_MIME
+            val encoderFormat = MediaFormat.createVideoFormat(actualMime, targetW, targetH).apply {
                 val bpsInt = selectedEncoder.appliedBitrateBps.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
                 setInteger(MediaFormat.KEY_BIT_RATE, bpsInt)
 
