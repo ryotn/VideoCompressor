@@ -165,9 +165,9 @@ class VideoTranscoder(
             }
 
             val (targetW, targetH) = computeTargetDimensions(srcWidth, srcHeight, rotation)
-            val targetBitrateBps = options.computeTargetVideoBitrateBps(originalBitrate).coerceAtLeast(MIN_BITRATE_BPS)
-            val targetFrameRateFps = options.computeTargetFrameRateFps(sourceFrameRate).coerceAtLeast(1)
-            val targetAudioBitrateBps = options.computeTargetAudioBitrateBps(originalAudioBitrate).coerceAtLeast(MIN_AUDIO_BITRATE_BPS)
+            val targetBitrateBps = options.computeTargetVideoBitrateBps(originalBitrate)
+            val targetFrameRateFps = options.computeTargetFrameRateFps(sourceFrameRate)
+            val targetAudioBitrateBps = options.computeTargetAudioBitrateBps(originalAudioBitrate)
             Log.d(
                 TAG,
                 "src=${srcWidth}x${srcHeight} → dst=${targetW}x${targetH} bitrate=${targetBitrateBps}bps fps=${targetFrameRateFps}"

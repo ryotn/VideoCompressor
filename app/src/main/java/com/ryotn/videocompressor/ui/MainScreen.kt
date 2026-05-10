@@ -121,10 +121,12 @@ fun MainScreen(
                 )
 
                 videoInfo?.let { info ->
-                    val estimatedVideoBitrate = options.computeTargetVideoBitrateBps(info.bitrateBps)
-                    val estimatedAudioBitrate = options.computeTargetAudioBitrateBps(info.audioBitrateBps)
-                    val estimatedSizeInBytes = ((estimatedVideoBitrate + estimatedAudioBitrate) * (info.durationMs / 1000.0) / 8.0).toLong()
-                    val estimatedMb = estimatedSizeInBytes / (1024.0 * 1024.0)
+                    val estimatedMb = remember(options, info) {
+                        val estimatedVideoBitrate = options.computeTargetVideoBitrateBps(info.bitrateBps)
+                        val estimatedAudioBitrate = options.computeTargetAudioBitrateBps(info.audioBitrateBps)
+                        val estimatedSizeInBytes = ((estimatedVideoBitrate + estimatedAudioBitrate) * (info.durationMs / 1000.0) / 8.0).toLong()
+                        estimatedSizeInBytes / (1024.0 * 1024.0)
+                    }
                     val displayEstimatedSize = if (estimatedMb >= 1024) {
                         stringResource(R.string.gb_format, estimatedMb / 1024)
                     } else {
