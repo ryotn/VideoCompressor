@@ -3,29 +3,20 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Film strip with sprocket holes (evenOdd creates transparent holes through the white strip) -->
+    <!-- Golden play-button circle: center=(54,54) r=24, safe zone 18-90 -->
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M54,30 A24,24 0 0,1 54,78 A24,24 0 0,1 54,30 Z"/>
+    <!-- White play triangle (offset +3 right for optical centering) -->
     <path
         android:fillColor="#FFFFFF"
-        android:fillType="evenOdd"
-        android:pathData="M18,40 L90,40 L90,68 L18,68 Z
-            M23,35 L31,35 L31,43 L23,43 Z
-            M41,35 L49,35 L49,43 L41,43 Z
-            M59,35 L67,35 L67,43 L59,43 Z
-            M77,35 L85,35 L85,43 L77,43 Z
-            M23,65 L31,65 L31,73 L23,73 Z
-            M41,65 L49,65 L49,73 L41,73 Z
-            M59,65 L67,65 L67,73 L59,73 Z
-            M77,65 L85,65 L85,73 L77,73 Z"/>
-    <!-- Play triangle (golden yellow) -->
+        android:pathData="M46,39 L46,69 L74,54 Z"/>
+    <!-- Left-side chevron pointing right (compression from left), base=18 tip=30 -->
     <path
-        android:fillColor="#FFD600"
-        android:pathData="M43,48 L43,60 L62,54 Z"/>
-    <!-- Left compression arrow pointing right -->
+        android:fillColor="#FFFFFF"
+        android:pathData="M18,38 L30,54 L18,70 Z"/>
+    <!-- Right-side chevron pointing left (compression from right), tip=78 base=90 -->
     <path
-        android:fillColor="#FFD600"
-        android:pathData="M10,54 L18,47 L18,61 Z"/>
-    <!-- Right compression arrow pointing left -->
-    <path
-        android:fillColor="#FFD600"
-        android:pathData="M98,54 L90,47 L90,61 Z"/>
+        android:fillColor="#FFFFFF"
+        android:pathData="M90,38 L78,54 L90,70 Z"/>
 </vector>
