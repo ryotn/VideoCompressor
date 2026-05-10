@@ -63,6 +63,12 @@
     <string name="compressed_size_label">圧縮後: %s</string>
     <string name="compression_ratio">圧縮率: %.1f%%</string>
     <string name="save_destination">保存先: %s</string>
+
+    <string name="notification_permission_title">通知の許可について</string>
+    <string name="notification_permission_message">バックグラウンドで動画を圧縮している際に、進捗や完了状態をお知らせするために通知の権限が必要です。</string>
+    <string name="save_directory_permission_title">保存先の指定について</string>
+    <string name="save_directory_permission_message">圧縮した動画ファイルを保存するために、保存先のフォルダを指定していただく必要があります。</string>
+    <string name="ok">OK</string>
     <string name="gb_format">%.1f GB</string>
     <string name="mb_format">%.1f MB</string>
     <string name="mbps_format">%.1f Mbps</string>

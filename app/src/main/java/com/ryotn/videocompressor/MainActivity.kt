@@ -12,9 +12,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,12 +48,27 @@ class MainActivity : ComponentActivity() {
                     }
 
                     var permissionsGranted by remember { mutableStateOf(false) }
+                    var showNotificationRationale by remember { mutableStateOf(false) }
+                    var showSaveDirectoryRationale by remember { mutableStateOf(false) }
                     val saveDirectoryUri by vm.saveDirectoryUri.collectAsState()
+
+                    val perms = buildList {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            add(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+
+                    val notGranted = perms.filter {
+                        ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
+                    }
 
                     val permissionLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.RequestMultiplePermissions()
                     ) { results ->
                         permissionsGranted = results.values.all { it }
+                        if (permissionsGranted && saveDirectoryUri == null) {
+                            showSaveDirectoryRationale = true
+                        }
                     }
 
                     val videoPickerLauncher = rememberLauncherForActivityResult(
@@ -71,23 +90,46 @@ class MainActivity : ComponentActivity() {
                     }
 
                     LaunchedEffect(Unit) {
-                        val perms = buildList {
-                            add(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                        val notGranted = perms.filter {
-                            ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
-                        }
                         if (notGranted.isEmpty()) {
                             permissionsGranted = true
+                            if (saveDirectoryUri == null) {
+                                showSaveDirectoryRationale = true
+                            }
                         } else {
-                            permissionLauncher.launch(notGranted.toTypedArray())
+                            showNotificationRationale = true
                         }
                     }
 
-                    LaunchedEffect(permissionsGranted, saveDirectoryUri) {
-                        if (permissionsGranted && saveDirectoryUri == null) {
-                            saveDirectoryLauncher.launch(null)
-                        }
+                    if (showNotificationRationale) {
+                        AlertDialog(
+                            onDismissRequest = { /* Require user to click OK */ },
+                            title = { Text(stringResource(R.string.notification_permission_title)) },
+                            text = { Text(stringResource(R.string.notification_permission_message)) },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showNotificationRationale = false
+                                    permissionLauncher.launch(notGranted.toTypedArray())
+                                }) {
+                                    Text(stringResource(R.string.ok))
+                                }
+                            }
+                        )
+                    }
+
+                    if (showSaveDirectoryRationale) {
+                        AlertDialog(
+                            onDismissRequest = { /* Require user to click OK */ },
+                            title = { Text(stringResource(R.string.save_directory_permission_title)) },
+                            text = { Text(stringResource(R.string.save_directory_permission_message)) },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showSaveDirectoryRationale = false
+                                    saveDirectoryLauncher.launch(null)
+                                }) {
+                                    Text(stringResource(R.string.ok))
+                                }
+                            }
+                        )
                     }
 
                     MainScreen(
