@@ -125,7 +125,7 @@ fun MainScreen(
                         modifier = Modifier.weight(1f),
                         enabled = state !is CompressionState.InProgress && state !is CompressionState.Preparing
                     ) {
-                        Text("戻る")
+                        Text(stringResource(R.string.back))
                     }
                     Button(
                         onClick = { viewModel.startCompression() },
@@ -213,11 +213,18 @@ private fun SelectionStepContent(
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(info.displayName, style = MaterialTheme.typography.titleSmall)
-                Text("サイズ: ${info.displaySize}")
-                Text("長さ: ${info.displayDuration}")
-                Text("解像度: ${info.displayResolution}")
-                Text("ビットレート: ${info.displayBitrate}")
-                Text("音声ビットレート: ${info.displayAudioBitrate}")
+                val mb = info.sizeBytes / (1024.0 * 1024.0)
+                val displaySize = if (mb >= 1024) stringResource(R.string.gb_format, mb / 1024) else stringResource(R.string.mb_format, mb)
+                Text(stringResource(R.string.size_label, displaySize))
+                val totalSeconds = info.durationMs / 1000
+                val hours = totalSeconds / 3600
+                val minutes = (totalSeconds % 3600) / 60
+                val seconds = totalSeconds % 60
+                val displayDuration = if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds) else "%d:%02d".format(minutes, seconds)
+                Text(stringResource(R.string.duration_label, displayDuration))
+                Text(stringResource(R.string.resolution_label, "${info.width}×${info.height}"))
+                Text(stringResource(R.string.bitrate_label, stringResource(R.string.mbps_format, info.bitrateBps / 1_000_000.0)))
+                Text(stringResource(R.string.audio_bitrate_label, stringResource(R.string.kbps_format_float, info.audioBitrateBps / 1_000.0)))
             }
         }
     } ?: Text(stringResource(R.string.no_video_selected), style = MaterialTheme.typography.bodyMedium)
@@ -234,7 +241,7 @@ private fun SelectionStepContent(
         modifier = Modifier.fillMaxWidth(),
         enabled = canProceed
     ) {
-        Text("次へ")
+        Text(stringResource(R.string.next))
     }
 }
 
@@ -295,7 +302,7 @@ private fun CompressionOptionsContent(
 
     when (options.bitrateMode) {
         BitrateMode.PERCENTAGE -> {
-            Text("${options.bitratePercentage}%")
+            Text(stringResource(R.string.progress_percentage, options.bitratePercentage))
             androidx.compose.material3.Slider(
                 value = options.bitratePercentage.toFloat(),
                 onValueChange = { viewModel.updateOptions(options.copy(bitratePercentage = it.toInt())) },
@@ -320,12 +327,12 @@ private fun CompressionOptionsContent(
             var expanded by remember { mutableStateOf(false) }
             Box {
                 OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(options.bitratePreset.labelJa)
+                    Text(stringResource(R.string.preset_label_format, stringResource(options.bitratePreset.labelResId), stringResource(R.string.kbps_format_int, options.bitratePreset.kbps)))
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     BitratePreset.entries.forEach { preset ->
                         DropdownMenuItem(
-                            text = { Text(preset.labelJa) },
+                            text = { Text(stringResource(R.string.preset_label_format, stringResource(preset.labelResId), stringResource(R.string.kbps_format_int, preset.kbps))) },
                             onClick = {
                                 viewModel.updateOptions(options.copy(bitratePreset = preset))
                                 expanded = false
@@ -358,7 +365,7 @@ private fun CompressionOptionsContent(
 
     when (options.audioBitrateMode) {
         BitrateMode.PERCENTAGE -> {
-            Text("${options.audioBitratePercentage}%")
+            Text(stringResource(R.string.progress_percentage, options.audioBitratePercentage))
             androidx.compose.material3.Slider(
                 value = options.audioBitratePercentage.toFloat(),
                 onValueChange = { viewModel.updateOptions(options.copy(audioBitratePercentage = it.toInt())) },
@@ -383,12 +390,12 @@ private fun CompressionOptionsContent(
             var expanded by remember { mutableStateOf(false) }
             Box {
                 OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(options.audioBitratePreset.labelJa)
+                    Text(stringResource(R.string.preset_label_format, stringResource(options.audioBitratePreset.labelResId), stringResource(R.string.kbps_format_int, options.audioBitratePreset.kbps)))
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     AudioBitratePreset.entries.forEach { preset ->
                         DropdownMenuItem(
-                            text = { Text(preset.labelJa) },
+                            text = { Text(stringResource(R.string.preset_label_format, stringResource(preset.labelResId), stringResource(R.string.kbps_format_int, preset.kbps))) },
                             onClick = {
                                 viewModel.updateOptions(options.copy(audioBitratePreset = preset))
                                 expanded = false
@@ -436,12 +443,12 @@ private fun CompressionOptionsContent(
             var expanded by remember { mutableStateOf(false) }
             Box {
                 OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(options.frameRatePreset.labelJa)
+                    Text(stringResource(R.string.preset_label_format, stringResource(options.frameRatePreset.labelResId), stringResource(R.string.fps_format_int, options.frameRatePreset.fps)))
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     FrameRatePreset.entries.forEach { preset ->
                         DropdownMenuItem(
-                            text = { Text(preset.labelJa) },
+                            text = { Text(stringResource(R.string.preset_label_format, stringResource(preset.labelResId), stringResource(R.string.fps_format_int, preset.fps))) },
                             onClick = {
                                 viewModel.updateOptions(options.copy(frameRatePreset = preset))
                                 expanded = false
@@ -474,7 +481,7 @@ private fun CompressionOptionsContent(
 
     when (options.resolutionMode) {
         ResolutionMode.PERCENTAGE -> {
-            Text("${options.resolutionPercentage}%")
+            Text(stringResource(R.string.progress_percentage, options.resolutionPercentage))
             androidx.compose.material3.Slider(
                 value = options.resolutionPercentage.toFloat(),
                 onValueChange = { viewModel.updateOptions(options.copy(resolutionPercentage = it.toInt())) },
@@ -482,7 +489,7 @@ private fun CompressionOptionsContent(
                 steps = 17
             )
             computeOutputDimensions(options, videoInfo)?.let { (w, h) ->
-                Text("出力解像度: ${w}×${h}", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.output_resolution, w, h), style = MaterialTheme.typography.bodySmall)
             }
         }
         ResolutionMode.DIRECT -> {
@@ -494,7 +501,7 @@ private fun CompressionOptionsContent(
                         v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(resolutionDirectWidth = it)) }
                     },
                     isError = resolutionDirectWidthText.isEmpty(),
-                    label = { Text("幅（上限）") },
+                    label = { Text(stringResource(R.string.width_limit)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
@@ -505,13 +512,13 @@ private fun CompressionOptionsContent(
                         v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(resolutionDirectHeight = it)) }
                     },
                     isError = resolutionDirectHeightText.isEmpty(),
-                    label = { Text("高さ（上限）") },
+                    label = { Text(stringResource(R.string.height_limit)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
             }
             computeOutputDimensions(options, videoInfo)?.let { (w, h) ->
-                Text("出力解像度: ${w}×${h}", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.output_resolution, w, h), style = MaterialTheme.typography.bodySmall)
             }
         }
         ResolutionMode.PRESET -> {
@@ -536,8 +543,9 @@ private fun CompressionOptionsContent(
     }
 }
 
+@Composable
 private fun formatResolutionPresetLabel(preset: ResolutionPreset, videoInfo: VideoInfo?): String {
-    val baseLabel = preset.labelJa.substringBefore(" (")
+    val baseLabel = stringResource(preset.labelResId)
     val (width, height) = computePresetDisplayDimensions(preset, videoInfo)
     return "$baseLabel (${width}×${height})"
 }
@@ -592,7 +600,7 @@ private fun ProgressStepContent(
 ) {
     when (state) {
         is CompressionState.Preparing -> {
-            Text("圧縮準備中...")
+            Text(stringResource(R.string.preparing_compression))
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             Button(
                 onClick = onCancel,
@@ -609,7 +617,7 @@ private fun ProgressStepContent(
                     progress = { state.progressPercent / 100f },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Text("%.1f%%".format(state.progressPercent))
+                Text(stringResource(R.string.progress_percentage_float, state.progressPercent))
                 Button(
                     onClick = onCancel,
                     modifier = Modifier.fillMaxWidth(),
@@ -630,19 +638,19 @@ private fun ProgressStepContent(
                 }
             }
             Button(onClick = onBackToOptions, modifier = Modifier.fillMaxWidth()) {
-                Text("オプションへ戻る")
+                Text(stringResource(R.string.back_to_options))
             }
         }
         is CompressionState.Cancelled -> {
-            Text("圧縮がキャンセルされました")
+            Text(stringResource(R.string.compression_cancelled))
             Button(onClick = onBackToOptions, modifier = Modifier.fillMaxWidth()) {
-                Text("オプションへ戻る")
+                Text(stringResource(R.string.back_to_options))
             }
         }
         else -> {
-            Text("圧縮待機中")
+            Text(stringResource(R.string.compression_waiting))
             Button(onClick = onBackToOptions, modifier = Modifier.fillMaxWidth()) {
-                Text("オプションへ戻る")
+                Text(stringResource(R.string.back_to_options))
             }
         }
     }
@@ -658,15 +666,15 @@ private fun CompletedStepContent(
             Text(stringResource(R.string.compression_complete), style = MaterialTheme.typography.titleSmall)
             val originalMb = state.originalSizeBytes / (1024.0 * 1024.0)
             val outputMb = state.outputSizeBytes / (1024.0 * 1024.0)
-            Text("元サイズ: %.1f MB".format(originalMb))
-            Text("圧縮後: %.1f MB".format(outputMb))
+            Text(stringResource(R.string.original_size, originalMb))
+            Text(stringResource(R.string.compressed_size, outputMb))
             if (state.originalSizeBytes > 0) {
-                Text("圧縮率: %.1f%%".format(outputMb / originalMb * 100))
+                Text(stringResource(R.string.compression_ratio, outputMb / originalMb * 100))
             }
-            Text("保存先: ${state.outputPath}", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.save_destination, state.outputPath), style = MaterialTheme.typography.bodySmall)
         }
     }
     Button(onClick = onClose, modifier = Modifier.fillMaxWidth()) {
-        Text("閉じる")
+        Text(stringResource(R.string.close))
     }
 }

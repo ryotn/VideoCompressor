@@ -1,36 +1,38 @@
 package com.ryotn.videocompressor.data
 
+import androidx.annotation.StringRes
+import com.ryotn.videocompressor.R
 import java.io.Serializable
 
 enum class BitrateMode { PERCENTAGE, DIRECT, PRESET }
 enum class ResolutionMode { PERCENTAGE, DIRECT, PRESET }
 enum class FrameRateMode { DIRECT, PRESET }
 
-enum class BitratePreset(val labelJa: String, val kbps: Int) {
-    LOW("低品質 (500 kbps)", 500),
-    MEDIUM("中品質 (1,500 kbps)", 1500),
-    HIGH("高品質 (3,000 kbps)", 3000),
-    VERY_HIGH("最高品質 (6,000 kbps)", 6000)
+enum class BitratePreset(@StringRes val labelResId: Int, val kbps: Int) {
+    LOW(R.string.preset_low, 500),
+    MEDIUM(R.string.preset_medium, 1500),
+    HIGH(R.string.preset_high, 3000),
+    VERY_HIGH(R.string.preset_very_high, 6000)
 }
 
-enum class ResolutionPreset(val labelJa: String, val width: Int, val height: Int) {
-    SD("SD (854×480)", 854, 480),
-    HD("HD (1280×720)", 1280, 720),
-    FHD("FHD (1920×1080)", 1920, 1080),
-    QHD("QHD (2560×1440)", 2560, 1440)
+enum class ResolutionPreset(@StringRes val labelResId: Int, val width: Int, val height: Int) {
+    SD(R.string.preset_sd, 854, 480),
+    HD(R.string.preset_hd, 1280, 720),
+    FHD(R.string.preset_fhd, 1920, 1080),
+    QHD(R.string.preset_qhd, 2560, 1440)
 }
 
-enum class FrameRatePreset(val labelJa: String, val fps: Int) {
-    CINEMA("シネマ (24 fps)", 24),
-    STANDARD("標準 (30 fps)", 30),
-    SMOOTH("なめらか (60 fps)", 60)
+enum class FrameRatePreset(@StringRes val labelResId: Int, val fps: Int) {
+    CINEMA(R.string.preset_cinema, 24),
+    STANDARD(R.string.preset_standard, 30),
+    SMOOTH(R.string.preset_smooth, 60)
 }
 
-enum class AudioBitratePreset(val labelJa: String, val kbps: Int) {
-    LOW("低品質 (64 kbps)", 64),
-    MEDIUM("中品質 (128 kbps)", 128),
-    HIGH("高品質 (192 kbps)", 192),
-    VERY_HIGH("最高品質 (256 kbps)", 256)
+enum class AudioBitratePreset(@StringRes val labelResId: Int, val kbps: Int) {
+    LOW(R.string.preset_low, 64),
+    MEDIUM(R.string.preset_medium, 128),
+    HIGH(R.string.preset_high, 192),
+    VERY_HIGH(R.string.preset_very_high, 256)
 }
 
 data class CompressionOptions(
