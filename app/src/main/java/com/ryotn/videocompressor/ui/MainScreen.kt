@@ -84,6 +84,7 @@ fun MainScreen(
     var showCancelDialog by rememberSaveable { mutableStateOf(false) }
     var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
     val activity = LocalContext.current as? Activity
+    var isDirectInputValid by remember { mutableStateOf(true) }
 
     LaunchedEffect(state) {
         when (state) {
@@ -183,41 +184,69 @@ fun MainScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "VideoCompressor",
-            style = MaterialTheme.typography.headlineMedium
-        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "VideoCompressor",
+                style = MaterialTheme.typography.headlineMedium
+            )
+
+            when (currentStep) {
+                ScreenStep.Selection -> {
+                    SelectionStepContent(
+                        videoInfo = videoInfo,
+                        saveDirectoryUriLabel = saveDirectoryLabel ?: saveDirectoryUri?.toString(),
+                        hasSaveDirectory = saveDirectoryUri != null,
+                        isBusy = state is CompressionState.InProgress || state is CompressionState.Preparing,
+                        onSelectVideo = onSelectVideo,
+                        onSelectSaveDirectory = onSelectSaveDirectory
+                    )
+                }
+                ScreenStep.Options -> {
+                    CompressionOptionsContent(
+                        options = options,
+                        videoInfo = videoInfo,
+                        viewModel = viewModel,
+                        selectedTabIndex = selectedTabIndex,
+                        onTabSelected = { selectedTabIndex = it },
+                        onValidityChanged = { isDirectInputValid = it }
+                    )
+                }
+                ScreenStep.Progress -> {
+                    ProgressStepContent(
+                        state = state
+                    )
+                }
+                ScreenStep.Completed -> {
+                    val completed = state as? CompressionState.Completed
+                    if (completed != null) {
+                        CompletedStepContent(
+                            state = completed
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         when (currentStep) {
             ScreenStep.Selection -> {
-                SelectionStepContent(
-                    videoInfo = videoInfo,
-                    saveDirectoryUriLabel = saveDirectoryLabel ?: saveDirectoryUri?.toString(),
-                    hasSaveDirectory = saveDirectoryUri != null,
-                    isBusy = state is CompressionState.InProgress || state is CompressionState.Preparing,
-                    canProceed = videoInfo != null && saveDirectoryUri != null &&
-                        state !is CompressionState.InProgress && state !is CompressionState.Preparing,
-                    onSelectVideo = onSelectVideo,
-                    onSelectSaveDirectory = onSelectSaveDirectory,
-                    onNext = { currentStep = ScreenStep.Options }
-                )
+                Button(
+                    onClick = { currentStep = ScreenStep.Options },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = videoInfo != null && saveDirectoryUri != null &&
+                        state !is CompressionState.InProgress && state !is CompressionState.Preparing
+                ) {
+                    Text(stringResource(R.string.next))
+                }
             }
             ScreenStep.Options -> {
-                // Initial validity is true because raw text states are initialised from Int option
-                // values whose toString() is always non-empty. LaunchedEffect keeps the parent
-                // state in sync whenever the user clears a direct-input field.
-                var isDirectInputValid by remember { mutableStateOf(true) }
-                CompressionOptionsContent(
-                    options = options,
-                    videoInfo = videoInfo,
-                    viewModel = viewModel,
-                    selectedTabIndex = selectedTabIndex,
-                    onTabSelected = { selectedTabIndex = it },
-                    onValidityChanged = { isDirectInputValid = it }
-                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = {
@@ -252,27 +281,35 @@ fun MainScreen(
                 }
             }
             ScreenStep.Progress -> {
-                ProgressStepContent(
-                    state = state,
-                    onCancel = { viewModel.cancelCompression() },
-                    onBackToOptions = {
-                        viewModel.resetState()
-                        currentStep = ScreenStep.Options
+                if (state is CompressionState.Preparing || state is CompressionState.InProgress) {
+                    Button(
+                        onClick = { viewModel.cancelCompression() },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(stringResource(R.string.cancel_compression))
                     }
-                )
+                } else if (state !is CompressionState.Completed) {
+                    Button(
+                        onClick = {
+                            viewModel.resetState()
+                            currentStep = ScreenStep.Options
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.back_to_options))
+                    }
+                }
             }
             ScreenStep.Completed -> {
-                val completed = state as? CompressionState.Completed
-                if (completed != null) {
-                    CompletedStepContent(
-                        state = completed,
-                        onClose = {
-                            viewModel.resetState()
-                            currentStep = ScreenStep.Selection
-                        }
-                    )
-                } else {
-                    currentStep = ScreenStep.Selection
+                Button(
+                    onClick = {
+                        viewModel.resetState()
+                        currentStep = ScreenStep.Selection
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.close))
                 }
             }
         }
@@ -285,10 +322,8 @@ private fun SelectionStepContent(
     saveDirectoryUriLabel: String?,
     hasSaveDirectory: Boolean,
     isBusy: Boolean,
-    canProceed: Boolean,
     onSelectVideo: () -> Unit,
-    onSelectSaveDirectory: () -> Unit,
-    onNext: () -> Unit
+    onSelectSaveDirectory: () -> Unit
 ) {
     Button(
         onClick = onSelectVideo,
@@ -353,13 +388,6 @@ private fun SelectionStepContent(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error
         )
-    }
-    Button(
-        onClick = onNext,
-        modifier = Modifier.fillMaxWidth(),
-        enabled = canProceed
-    ) {
-        Text(stringResource(R.string.next))
     }
 }
 
@@ -881,21 +909,12 @@ private fun makeEven(value: Int): Int = if (value % 2 == 0) value else value - 1
 
 @Composable
 private fun ProgressStepContent(
-    state: CompressionState,
-    onCancel: () -> Unit,
-    onBackToOptions: () -> Unit
+    state: CompressionState
 ) {
     when (state) {
         is CompressionState.Preparing -> {
             Text(stringResource(R.string.preparing_compression))
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            Button(
-                onClick = onCancel,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text(stringResource(R.string.cancel_compression))
-            }
         }
         is CompressionState.InProgress -> {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -905,13 +924,6 @@ private fun ProgressStepContent(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(stringResource(R.string.progress_percentage_float, state.progressPercent))
-                Button(
-                    onClick = onCancel,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text(stringResource(R.string.cancel_compression))
-                }
             }
         }
         is CompressionState.Failed -> {
@@ -924,29 +936,19 @@ private fun ProgressStepContent(
                     Text(state.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
-            Button(onClick = onBackToOptions, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.back_to_options))
-            }
         }
         is CompressionState.Cancelled -> {
             Text(stringResource(R.string.compression_cancelled))
-            Button(onClick = onBackToOptions, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.back_to_options))
-            }
         }
         else -> {
             Text(stringResource(R.string.compression_waiting))
-            Button(onClick = onBackToOptions, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.back_to_options))
-            }
         }
     }
 }
 
 @Composable
 private fun CompletedStepContent(
-    state: CompressionState.Completed,
-    onClose: () -> Unit
+    state: CompressionState.Completed
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -962,8 +964,5 @@ private fun CompletedStepContent(
             }
             Text(stringResource(R.string.save_destination, state.outputPath), style = MaterialTheme.typography.bodySmall)
         }
-    }
-    Button(onClick = onClose, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.close))
     }
 }
