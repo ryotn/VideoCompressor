@@ -64,7 +64,8 @@ class VideoTranscoder(
         private const val CODEC_TIMEOUT_US = 10_000L
         /** Maximum time to wait for the decoder to produce a rendered frame (milliseconds). */
         private const val FRAME_TIMEOUT_MS = 3_000L
-        private const val VIDEO_MIME = "video/avc"
+        /** Fallback MIME type if original is missing or unspecified. */
+        private const val FALLBACK_VIDEO_MIME = "video/avc"
         private const val AUDIO_OUTPUT_MIME = "audio/mp4a-latm"
         /** Minimum acceptable video bitrate to avoid MediaCodec configuration errors. */
         private const val MIN_BITRATE_BPS = 100_000L
@@ -174,8 +175,9 @@ class VideoTranscoder(
             )
 
             // ---- encoder ----
-            val selectedEncoder = selectEncoder(targetBitrateBps, targetW, targetH)
-            val encoderFormat = MediaFormat.createVideoFormat(VIDEO_MIME, targetW, targetH).apply {
+            val targetMime = options.videoCodec.mimeType ?: videoInputFormat.getString(MediaFormat.KEY_MIME) ?: FALLBACK_VIDEO_MIME
+            val selectedEncoder = selectEncoder(targetBitrateBps, targetW, targetH, targetMime)
+            val encoderFormat = MediaFormat.createVideoFormat(targetMime, targetW, targetH).apply {
                 val bpsInt = selectedEncoder.appliedBitrateBps.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
                 setInteger(MediaFormat.KEY_BIT_RATE, bpsInt)
 
@@ -461,15 +463,15 @@ class VideoTranscoder(
      *  2. Otherwise, a hardware encoder whose range includes the target.
      *  3. The system default if nothing else works.
      */
-    private fun selectEncoder(targetBitrateBps: Long, width: Int, height: Int): SelectedEncoder {
+    private fun selectEncoder(targetBitrateBps: Long, width: Int, height: Int, mimeType: String): SelectedEncoder {
         // Find the first encoder that supports the requested resolution.
         // MediaCodecList.REGULAR_CODECS naturally sorts hardware encoders first, which is preferred for performance.
         val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
         for (info in codecList.codecInfos) {
             if (!info.isEncoder) continue
-            if (!info.supportedTypes.any { it.equals(VIDEO_MIME, ignoreCase = true) }) continue
+            if (!info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) }) continue
 
-            val caps = runCatching { info.getCapabilitiesForType(VIDEO_MIME) }.getOrNull() ?: continue
+            val caps = runCatching { info.getCapabilitiesForType(mimeType) }.getOrNull() ?: continue
             val videoCaps = caps.videoCapabilities ?: continue
 
             // If the encoder doesn't support the size, skip it.
@@ -500,9 +502,12 @@ class VideoTranscoder(
             )
         }
 
-        Log.w(TAG, "No encoder supporting ${width}x${height}, using default")
+        Log.w(TAG, "No encoder supporting ${width}x${height} for $mimeType, using default")
         return SelectedEncoder(
-            codec = MediaCodec.createEncoderByType(VIDEO_MIME),
+            codec = runCatching { MediaCodec.createEncoderByType(mimeType) }.getOrElse {
+                Log.w(TAG, "Failed to create encoder for $mimeType, falling back to $FALLBACK_VIDEO_MIME", it)
+                MediaCodec.createEncoderByType(FALLBACK_VIDEO_MIME)
+            },
             bitrateMode = null,
             appliedBitrateBps = targetBitrateBps
         )

@@ -283,6 +283,25 @@ private fun CompressionOptionsContent(
 
     Text(stringResource(R.string.compression_options), style = MaterialTheme.typography.titleMedium)
 
+    Text(stringResource(R.string.codec_options), style = MaterialTheme.typography.titleSmall)
+    var codecExpanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { codecExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(options.videoCodec.labelResId))
+        }
+        DropdownMenu(expanded = codecExpanded, onDismissRequest = { codecExpanded = false }) {
+            com.ryotn.videocompressor.data.VideoCodec.entries.forEach { codec ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(codec.labelResId)) },
+                    onClick = {
+                        viewModel.updateOptions(options.copy(videoCodec = codec))
+                        codecExpanded = false
+                    }
+                )
+            }
+        }
+    }
+
     Text(stringResource(R.string.bitrate_options), style = MaterialTheme.typography.titleSmall)
     Text(stringResource(R.string.video_bitrate_options), style = MaterialTheme.typography.bodyMedium)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
