@@ -3,22 +3,20 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Pinched / squeezed video frame (white) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M25,22C20.58,22 17,25.58 17,30V57C17,61.42 20.58,65 25,65H83C87.42,65 91,61.42 91,57V30C91,25.58 87.42,22 83,22H25Z" />
+        android:pathData="M33,32 L75,32 A9,9 0 0,1 84,41 C73.3,41 73.3,67 84,67 A9,9 0 0,1 75,76 L33,76 A9,9 0 0,1 24,67 C34.7,67 34.7,41 24,41 A9,9 0 0,1 33,32 Z" />
+    <!-- Play triangle (background colour, appears as a cut-out in the white frame) -->
     <path
-        android:fillColor="#1F6FEB"
-        android:pathData="M48,35V52L63,43.5L48,35Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M24,78H43V84H24V78Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M43,72L50,81L43,90V72Z" />
+        android:fillColor="#4A90E2"
+        android:pathData="M47,45 L47,63 L61,54 Z" />
+    <!-- Down arrow above frame -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M84,78H65V84H84V78Z" />
+        android:pathData="M48,12 L60,12 L60,21 L64,21 L54,29 L44,21 L48,21 Z" />
+    <!-- Up arrow below frame -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M65,72L58,81L65,90V72Z" />
+        android:pathData="M48,96 L60,96 L60,87 L64,87 L54,79 L44,87 L48,87 Z" />
 </vector>
