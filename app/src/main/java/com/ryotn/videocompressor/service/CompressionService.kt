@@ -188,7 +188,7 @@ class CompressionService : Service() {
     }
 
     private fun createNotificationChannel() {
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val nm = getSystemService(NotificationManager::class.java)
 
         val progressChannel = NotificationChannel(
             CHANNEL_ID,
@@ -197,7 +197,6 @@ class CompressionService : Service() {
         ).apply {
             description = getString(R.string.notification_channel_description)
         }
-        nm.createNotificationChannel(progressChannel)
 
         val completeChannel = NotificationChannel(
             COMPLETE_CHANNEL_ID,
@@ -206,7 +205,8 @@ class CompressionService : Service() {
         ).apply {
             description = getString(R.string.notification_channel_complete_description)
         }
-        nm.createNotificationChannel(completeChannel)
+
+        nm?.createNotificationChannels(listOf(progressChannel, completeChannel))
     }
 
     private fun buildNotification(progress: Float): Notification {
