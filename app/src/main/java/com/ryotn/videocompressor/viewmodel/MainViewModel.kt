@@ -193,11 +193,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             putExtra(CompressionService.EXTRA_ORIGINAL_HEIGHT, info.height)
             putExtra(CompressionService.EXTRA_ORIGINAL_SIZE, info.sizeBytes)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
-        }
+        context.startForegroundService(intent)
         _compressionState.value = CompressionState.InProgress(0f, 0L)
     }
 
