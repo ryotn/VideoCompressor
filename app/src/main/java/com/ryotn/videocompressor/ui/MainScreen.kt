@@ -228,8 +228,6 @@ fun MainScreen(
                         CompletedStepContent(
                             state = completed
                         )
-                    } else {
-                        currentStep = ScreenStep.Selection
                     }
                 }
             }
@@ -291,7 +289,7 @@ fun MainScreen(
                     ) {
                         Text(stringResource(R.string.cancel_compression))
                     }
-                } else if (state is CompressionState.Failed || state is CompressionState.Cancelled || state !is CompressionState.Completed) {
+                } else if (state !is CompressionState.Completed) {
                     Button(
                         onClick = {
                             viewModel.resetState()
