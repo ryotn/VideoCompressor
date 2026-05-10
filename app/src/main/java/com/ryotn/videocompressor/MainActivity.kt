@@ -11,11 +11,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,7 +20,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ryotn.videocompressor.ui.MainScreen
@@ -41,18 +37,13 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val vm: MainViewModel = viewModel()
 
-                    var permissionsChecked by remember { mutableStateOf(false) }
-                    var showNotificationDialog by remember { mutableStateOf(false) }
-                    var showSaveDirectoryDialog by remember { mutableStateOf(false) }
+                    var permissionsGranted by remember { mutableStateOf(false) }
                     val saveDirectoryUri by vm.saveDirectoryUri.collectAsState()
-
-                    var permissionsToRequest by remember { mutableStateOf<Array<String>>(emptyArray()) }
 
                     val permissionLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.RequestMultiplePermissions()
-                    ) { _ ->
-                        // Proceed regardless of whether the user granted or denied
-                        permissionsChecked = true
+                    ) { results ->
+                        permissionsGranted = results.values.all { it }
                     }
 
                     val videoPickerLauncher = rememberLauncherForActivityResult(
@@ -83,49 +74,16 @@ class MainActivity : ComponentActivity() {
                             ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
                         }
                         if (notGranted.isEmpty()) {
-                            permissionsChecked = true
+                            permissionsGranted = true
                         } else {
-                            permissionsToRequest = notGranted.toTypedArray()
-                            showNotificationDialog = true
+                            permissionLauncher.launch(notGranted.toTypedArray())
                         }
                     }
 
-                    LaunchedEffect(permissionsChecked, saveDirectoryUri) {
-                        if (permissionsChecked && saveDirectoryUri == null) {
-                            showSaveDirectoryDialog = true
+                    LaunchedEffect(permissionsGranted, saveDirectoryUri) {
+                        if (permissionsGranted && saveDirectoryUri == null) {
+                            saveDirectoryLauncher.launch(null)
                         }
-                    }
-
-                    if (showNotificationDialog) {
-                        AlertDialog(
-                            onDismissRequest = { /* No-op to force user to click OK */ },
-                            title = { Text(stringResource(id = R.string.notification_permission_title)) },
-                            text = { Text(stringResource(id = R.string.notification_permission_message)) },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    showNotificationDialog = false
-                                    permissionLauncher.launch(permissionsToRequest)
-                                }) {
-                                    Text(stringResource(id = R.string.ok))
-                                }
-                            }
-                        )
-                    }
-
-                    if (showSaveDirectoryDialog) {
-                        AlertDialog(
-                            onDismissRequest = { /* No-op */ },
-                            title = { Text(stringResource(id = R.string.save_directory_permission_title)) },
-                            text = { Text(stringResource(id = R.string.save_directory_permission_message)) },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    showSaveDirectoryDialog = false
-                                    saveDirectoryLauncher.launch(null)
-                                }) {
-                                    Text(stringResource(id = R.string.ok))
-                                }
-                            }
-                        )
                     }
 
                     MainScreen(

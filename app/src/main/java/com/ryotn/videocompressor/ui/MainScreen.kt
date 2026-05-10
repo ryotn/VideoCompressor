@@ -528,7 +528,7 @@ private fun CompressionOptionsContent(
             val availablePresets = remember(videoInfo) {
                 ResolutionPreset.entries.distinctBy { computePresetDisplayDimensions(it, videoInfo) }
             }
-            LaunchedEffect(availablePresets) {
+            LaunchedEffect(availablePresets, options.resolutionPreset) {
                 if (options.resolutionPreset !in availablePresets) {
                     viewModel.updateOptions(options.copy(resolutionPreset = availablePresets.last()))
                 }
