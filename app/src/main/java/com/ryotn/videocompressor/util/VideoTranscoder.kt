@@ -201,7 +201,12 @@ class VideoTranscoder(
             decoder.configure(videoInputFormat, decoderSurface, null, 0)
 
             // ---- muxer ----
-            muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4).apply {
+                val normalizedRotation = ((rotation % 360) + 360) % 360
+                if (normalizedRotation == 90 || normalizedRotation == 180 || normalizedRotation == 270) {
+                    setOrientationHint(normalizedRotation)
+                }
+            }
 
             // Probe audio format now so we can add it as a track before muxer.start()
             val audioTrackIdx = findTrack(audioExtractor, "audio/")
@@ -288,7 +293,6 @@ class VideoTranscoder(
                     encIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                         if (!muxerStarted) {
                             val videoOutFmt = encoder.outputFormat
-                            if (rotation != 0) videoOutFmt.setInteger(MediaFormat.KEY_ROTATION, rotation)
                             muxerVideoTrack = muxer.addTrack(videoOutFmt)
                             if (transcodedAudio != null) {
                                 muxerAudioTrack = muxer.addTrack(transcodedAudio.first)
