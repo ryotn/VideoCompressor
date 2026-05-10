@@ -30,8 +30,9 @@
     <string name="back">戻る</string>
     <string name="next">次へ</string>
     <string name="size_label">サイズ: %s</string>
-    <string name="duration_label">長さ: %s</string>
-    <string name="resolution_label">解像度: %s</string>
+    <string name="duration_label_hms">長さ: %1$d:%2$02d:%3$02d</string>
+    <string name="duration_label_ms">長さ: %1$d:%2$02d</string>
+    <string name="resolution_label">解像度: %1$d×%2$d</string>
     <string name="bitrate_label">ビットレート: %s</string>
     <string name="audio_bitrate_label">音声ビットレート: %s</string>
     <string name="width_limit">幅（上限）</string>
@@ -42,8 +43,8 @@
     <string name="compression_cancelled">圧縮がキャンセルされました</string>
     <string name="compression_waiting">圧縮待機中</string>
     <string name="close">閉じる</string>
-    <string name="original_size">元サイズ: %.1f MB</string>
-    <string name="compressed_size">圧縮後: %.1f MB</string>
+    <string name="original_size_label">元サイズ: %s</string>
+    <string name="compressed_size_label">圧縮後: %s</string>
     <string name="compression_ratio">圧縮率: %.1f%%</string>
     <string name="save_destination">保存先: %s</string>
     <string name="gb_format">%.1f GB</string>
@@ -55,6 +56,7 @@
     <string name="progress_percentage">%d%%</string>
     <string name="progress_percentage_float">%.1f%%</string>
     <string name="preset_label_format">%1$s (%2$s)</string>
+    <string name="preset_resolution_label_format">%1$s (%2$d×%3$d)</string>
     <string name="preset_low">低品質</string>
     <string name="preset_medium">中品質</string>
     <string name="preset_high">高品質</string>

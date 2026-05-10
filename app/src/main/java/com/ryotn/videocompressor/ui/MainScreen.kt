@@ -220,9 +220,12 @@ private fun SelectionStepContent(
                 val hours = totalSeconds / 3600
                 val minutes = (totalSeconds % 3600) / 60
                 val seconds = totalSeconds % 60
-                val displayDuration = if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds) else "%d:%02d".format(minutes, seconds)
-                Text(stringResource(R.string.duration_label, displayDuration))
-                Text(stringResource(R.string.resolution_label, "${info.width}×${info.height}"))
+                if (hours > 0) {
+                    Text(stringResource(R.string.duration_label_hms, hours, minutes, seconds))
+                } else {
+                    Text(stringResource(R.string.duration_label_ms, minutes, seconds))
+                }
+                Text(stringResource(R.string.resolution_label, info.width, info.height))
                 Text(stringResource(R.string.bitrate_label, stringResource(R.string.mbps_format, info.bitrateBps / 1_000_000.0)))
                 Text(stringResource(R.string.audio_bitrate_label, stringResource(R.string.kbps_format_float, info.audioBitrateBps / 1_000.0)))
             }
@@ -547,7 +550,7 @@ private fun CompressionOptionsContent(
 private fun formatResolutionPresetLabel(preset: ResolutionPreset, videoInfo: VideoInfo?): String {
     val baseLabel = stringResource(preset.labelResId)
     val (width, height) = computePresetDisplayDimensions(preset, videoInfo)
-    return "$baseLabel (${width}×${height})"
+    return stringResource(R.string.preset_resolution_label_format, baseLabel, width, height)
 }
 
 private fun computePresetDisplayDimensions(preset: ResolutionPreset, videoInfo: VideoInfo?): Pair<Int, Int> {
@@ -666,8 +669,10 @@ private fun CompletedStepContent(
             Text(stringResource(R.string.compression_complete), style = MaterialTheme.typography.titleSmall)
             val originalMb = state.originalSizeBytes / (1024.0 * 1024.0)
             val outputMb = state.outputSizeBytes / (1024.0 * 1024.0)
-            Text(stringResource(R.string.original_size, originalMb))
-            Text(stringResource(R.string.compressed_size, outputMb))
+            val originalDisplaySize = if (originalMb >= 1024) stringResource(R.string.gb_format, originalMb / 1024) else stringResource(R.string.mb_format, originalMb)
+            val outputDisplaySize = if (outputMb >= 1024) stringResource(R.string.gb_format, outputMb / 1024) else stringResource(R.string.mb_format, outputMb)
+            Text(stringResource(R.string.original_size_label, originalDisplaySize))
+            Text(stringResource(R.string.compressed_size_label, outputDisplaySize))
             if (state.originalSizeBytes > 0) {
                 Text(stringResource(R.string.compression_ratio, outputMb / originalMb * 100))
             }
