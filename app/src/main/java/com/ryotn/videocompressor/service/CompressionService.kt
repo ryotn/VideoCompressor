@@ -290,15 +290,14 @@ class CompressionService : Service() {
     private fun buildOutputFileName(directory: DocumentFile, sourceUri: Uri): String {
         val originalName = DocumentFile.fromSingleUri(this, sourceUri)?.name?.takeIf { it.isNotBlank() } ?: "compressed_video.mp4"
         val baseName = if (originalName.contains('.')) originalName.substringBeforeLast('.') else originalName
-        val ext = if (originalName.contains('.')) ".${originalName.substringAfterLast('.')}" else ".mp4"
+        val ext = ".mp4"
 
-        var currentName = originalName
-        if (!currentName.endsWith(ext) && ext.isNotBlank()) {
-            currentName = "$baseName$ext"
-        }
+        var currentName = "$baseName$ext"
+
+        val existingFiles = directory.listFiles().mapNotNull { it.name }.toSet()
 
         var counter = 1
-        while (directory.findFile(currentName) != null) {
+        while (existingFiles.contains(currentName)) {
             currentName = "${baseName}_$counter$ext"
             counter++
         }
