@@ -546,9 +546,21 @@ private fun SimpleModeContent(
     videoInfo: VideoInfo?,
     viewModel: MainViewModel
 ) {
+    val sliderMin = videoInfo?.let { SimpleCompressionOptions.computeMinSizeMb(it).toFloat() } ?: 1f
+    val sliderMax = videoInfo?.let { SimpleCompressionOptions.computeMaxSizeMb(it).toFloat() } ?: 1000f
+
+    // Clamp current value into the valid range when video changes
+    LaunchedEffect(sliderMin, sliderMax) {
+        val clamped = simpleOptions.targetSizeMb.toFloat().coerceIn(sliderMin, sliderMax).toInt()
+        if (clamped != simpleOptions.targetSizeMb) {
+            viewModel.updateSimpleOptions(simpleOptions.copy(targetSizeMb = clamped))
+        }
+    }
+
     val videoBitrateKbps = simpleOptions.computeVideoBitrateKbps(videoInfo)
-    val actualBitrateKbps = videoBitrateKbps.coerceAtLeast(SimpleCompressionOptions.MIN_VIDEO_BITRATE_HD_KBPS)
-    val resolution = simpleOptions.computeResolutionPreset(actualBitrateKbps)
+    val actualVideoBitrateKbps = videoBitrateKbps.coerceAtLeast(SimpleCompressionOptions.MIN_VIDEO_BITRATE_HD_KBPS)
+    val audioBitrateKbps = simpleOptions.computeAudioBitrateKbps(videoInfo)
+    val resolution = simpleOptions.computeResolutionPreset(actualVideoBitrateKbps)
     val isAchievable = simpleOptions.isAchievable(videoInfo)
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -557,9 +569,9 @@ private fun SimpleModeContent(
             style = MaterialTheme.typography.bodyMedium
         )
         androidx.compose.material3.Slider(
-            value = simpleOptions.targetSizeMb.toFloat(),
+            value = simpleOptions.targetSizeMb.toFloat().coerceIn(sliderMin, sliderMax),
             onValueChange = { viewModel.updateSimpleOptions(simpleOptions.copy(targetSizeMb = it.toInt())) },
-            valueRange = 10f..4000f
+            valueRange = sliderMin..sliderMax
         )
 
         if (!isAchievable) {
@@ -586,13 +598,13 @@ private fun SimpleModeContent(
                     Text(stringResource(R.string.computed_fps_label, SimpleCompressionOptions.FRAME_RATE_FPS))
                     val (outW, outH) = computePresetDisplayDimensions(resolution, videoInfo)
                     Text(stringResource(R.string.computed_resolution_label, outW, outH))
-                    val bitrateDisplay = if (actualBitrateKbps >= 1000) {
-                        stringResource(R.string.mbps_format, actualBitrateKbps / 1000.0)
+                    val bitrateDisplay = if (actualVideoBitrateKbps >= 1000) {
+                        stringResource(R.string.mbps_format, actualVideoBitrateKbps / 1000.0)
                     } else {
-                        stringResource(R.string.kbps_format_int, actualBitrateKbps)
+                        stringResource(R.string.kbps_format_int, actualVideoBitrateKbps)
                     }
                     Text(stringResource(R.string.computed_video_bitrate_label, bitrateDisplay))
-                    Text(stringResource(R.string.computed_audio_bitrate_label, SimpleCompressionOptions.AUDIO_BITRATE_KBPS))
+                    Text(stringResource(R.string.computed_audio_bitrate_label, audioBitrateKbps))
                 }
             }
         }

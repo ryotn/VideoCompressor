@@ -46,10 +46,34 @@ data class SimpleCompressionOptions(
     val targetSizeMb: Int = 100
 ) : Serializable {
     companion object {
-        const val AUDIO_BITRATE_KBPS = 128
         const val FRAME_RATE_FPS = 30
         const val MIN_VIDEO_BITRATE_FHD_KBPS = 2000
         const val MIN_VIDEO_BITRATE_HD_KBPS = 500
+        const val MIN_AUDIO_BITRATE_KBPS = 64
+        const val MAX_AUDIO_BITRATE_KBPS = 128
+
+        fun computeMaxSizeMb(videoInfo: VideoInfo): Int =
+            ((videoInfo.sizeBytes * 2L / 3L) / (1024L * 1024L)).toInt().coerceAtLeast(10)
+
+        fun computeMinSizeMb(videoInfo: VideoInfo): Int {
+            if (videoInfo.durationMs <= 0) return 1
+            val durationSeconds = videoInfo.durationMs / 1000.0
+            val minTotalKbps = MIN_VIDEO_BITRATE_HD_KBPS + MIN_AUDIO_BITRATE_KBPS
+            return ((minTotalKbps * 1000L * durationSeconds / 8.0) / (1024.0 * 1024.0))
+                .toInt().coerceAtLeast(1)
+        }
+    }
+
+    fun computeAudioBitrateKbps(videoInfo: VideoInfo?): Int {
+        if (videoInfo == null || videoInfo.durationMs <= 0) return MIN_AUDIO_BITRATE_KBPS
+        val targetBits = targetSizeMb * 1024L * 1024L * 8L
+        val durationSeconds = videoInfo.durationMs / 1000.0
+        val totalKbps = (targetBits / durationSeconds / 1000).toInt()
+        return when {
+            totalKbps >= 2500 -> MAX_AUDIO_BITRATE_KBPS
+            totalKbps >= 1200 -> 96
+            else -> MIN_AUDIO_BITRATE_KBPS
+        }
     }
 
     fun computeVideoBitrateKbps(videoInfo: VideoInfo?): Int {
@@ -57,7 +81,7 @@ data class SimpleCompressionOptions(
         val targetBits = targetSizeMb * 1024L * 1024L * 8L
         val durationSeconds = videoInfo.durationMs / 1000.0
         val totalBitrateKbps = (targetBits / durationSeconds / 1000).toInt()
-        return (totalBitrateKbps - AUDIO_BITRATE_KBPS).coerceAtLeast(0)
+        return (totalBitrateKbps - computeAudioBitrateKbps(videoInfo)).coerceAtLeast(0)
     }
 
     fun computeResolutionPreset(videoBitrateKbps: Int): ResolutionPreset =
@@ -68,6 +92,7 @@ data class SimpleCompressionOptions(
 
     fun toCompressionOptions(videoInfo: VideoInfo?, preferH265: Boolean = true): CompressionOptions {
         val videoBitrateKbps = computeVideoBitrateKbps(videoInfo).coerceAtLeast(MIN_VIDEO_BITRATE_HD_KBPS)
+        val audioBitrateKbps = computeAudioBitrateKbps(videoInfo)
         val resolution = computeResolutionPreset(videoBitrateKbps)
         return CompressionOptions(
             videoCodec = if (preferH265) VideoCodec.H265 else VideoCodec.H264,
@@ -76,7 +101,7 @@ data class SimpleCompressionOptions(
             bitrateMode = BitrateMode.DIRECT,
             bitrateDirectKbps = videoBitrateKbps,
             audioBitrateMode = BitrateMode.DIRECT,
-            audioBitrateDirectKbps = AUDIO_BITRATE_KBPS,
+            audioBitrateDirectKbps = audioBitrateKbps,
             resolutionMode = ResolutionMode.PRESET,
             resolutionPreset = resolution
         )
