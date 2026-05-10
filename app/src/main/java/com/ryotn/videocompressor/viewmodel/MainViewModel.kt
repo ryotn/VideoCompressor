@@ -213,6 +213,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _compressionState.value = CompressionState.Idle
     }
 
+    fun setCompressionCompleted(outputPath: String, originalSize: Long, outputSize: Long) {
+        _compressionState.value = CompressionState.Completed(outputPath, originalSize, outputSize)
+    }
+
     override fun onCleared() {
         super.onCleared()
         LocalBroadcastManager.getInstance(getApplication()).unregisterReceiver(broadcastReceiver)

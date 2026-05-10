@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ryotn.videocompressor.ui.MainScreen
 import com.ryotn.videocompressor.ui.theme.VideoCompressorTheme
@@ -36,6 +37,10 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val vm: MainViewModel = viewModel()
+
+                    LaunchedEffect(Unit) {
+                        handleIntent(intent, vm)
+                    }
 
                     var permissionsGranted by remember { mutableStateOf(false) }
                     val saveDirectoryUri by vm.saveDirectoryUri.collectAsState()
@@ -91,6 +96,24 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val vm = ViewModelProvider(this)[MainViewModel::class.java]
+        handleIntent(intent, vm)
+    }
+
+    private fun handleIntent(intent: Intent?, vm: MainViewModel) {
+        if (intent?.getBooleanExtra("show_completion", false) == true) {
+            val outputPath = intent.getStringExtra("output_path") ?: ""
+            val originalSize = intent.getLongExtra("original_size", 0L)
+            val outputSize = intent.getLongExtra("output_size", 0L)
+            vm.setCompressionCompleted(outputPath, originalSize, outputSize)
+            // Remove the flag so it doesn't trigger again on rotation, etc.
+            intent.removeExtra("show_completion")
         }
     }
 }
