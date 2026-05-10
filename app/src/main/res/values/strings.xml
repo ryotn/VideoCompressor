@@ -46,6 +46,8 @@
     <string name="close">閉じる</string>
     <string name="exit_app_title">確認</string>
     <string name="exit_app_message">アプリを終了しますか？</string>
+    <string name="cancel_app_title">確認</string>
+    <string name="cancel_app_message">圧縮処理をキャンセルしますか？</string>
     <string name="yes">はい</string>
     <string name="no">いいえ</string>
 

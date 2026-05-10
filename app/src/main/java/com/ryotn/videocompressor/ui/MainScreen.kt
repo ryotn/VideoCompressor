@@ -75,6 +75,7 @@ fun MainScreen(
 
     var currentStep by rememberSaveable { mutableStateOf(ScreenStep.Selection) }
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
+    var showCancelDialog by rememberSaveable { mutableStateOf(false) }
     val activity = LocalContext.current as? Activity
 
     LaunchedEffect(state) {
@@ -103,7 +104,7 @@ fun MainScreen(
                     viewModel.resetState()
                     currentStep = ScreenStep.Options
                 } else {
-                    showExitDialog = true
+                    showCancelDialog = true
                 }
             }
             else -> {
@@ -128,6 +129,31 @@ fun MainScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showExitDialog = false }) {
+                    Text(stringResource(R.string.no))
+                }
+            }
+        )
+    }
+
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false },
+            title = {
+                Text(stringResource(R.string.cancel_app_title))
+            },
+            text = {
+                Text(stringResource(R.string.cancel_app_message))
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.cancelCompression()
+                    showCancelDialog = false
+                }) {
+                    Text(stringResource(R.string.yes))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelDialog = false }) {
                     Text(stringResource(R.string.no))
                 }
             }
