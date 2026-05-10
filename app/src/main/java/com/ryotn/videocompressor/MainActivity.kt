@@ -50,14 +50,11 @@ class MainActivity : ComponentActivity() {
                     var permissionsGranted by remember { mutableStateOf(false) }
                     var showNotificationRationale by rememberSaveable { mutableStateOf(false) }
                     var showSaveDirectoryRationale by rememberSaveable { mutableStateOf(false) }
-                    val saveDirectoryUri by vm.saveDirectoryUri.collectAsState()
-
-                    val perms = buildList {
-                        add(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-
-                    val notGranted = perms.filter {
-                        ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
+                    val perms = remember { buildList { add(Manifest.permission.POST_NOTIFICATIONS) } }
+                    val notGranted = remember(permissionsGranted) {
+                        perms.filter {
+                            ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
+                        }
                     }
 
                     val permissionLauncher = rememberLauncherForActivityResult(
