@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -51,6 +53,7 @@ import com.ryotn.videocompressor.data.FrameRatePreset
 import com.ryotn.videocompressor.data.ResolutionMode
 import com.ryotn.videocompressor.data.ResolutionPreset
 import com.ryotn.videocompressor.data.VideoInfo
+import com.ryotn.videocompressor.data.VideoCodec
 import com.ryotn.videocompressor.viewmodel.MainViewModel
 
 private enum class ScreenStep {
@@ -334,6 +337,35 @@ private fun CompressionOptionsContent(
     LaunchedEffect(isValid) { onValidityChanged(isValid) }
 
     Text(stringResource(R.string.compression_options), style = MaterialTheme.typography.titleMedium)
+
+    Text(stringResource(R.string.codec_options), style = MaterialTheme.typography.titleSmall)
+    var codecExpanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { codecExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+            val isOriginal = videoInfo?.videoCodecMime != null && options.videoCodec.mimeType.equals(videoInfo.videoCodecMime, ignoreCase = true)
+            val labelStr = stringResource(options.videoCodec.labelResId)
+            val displayText = if (isOriginal) stringResource(R.string.codec_original_format, labelStr) else labelStr
+            Text(displayText)
+        }
+        DropdownMenu(expanded = codecExpanded, onDismissRequest = { codecExpanded = false }) {
+            VideoCodec.entries.forEach { codec ->
+                DropdownMenuItem(
+                    text = {
+                        val isOriginal = videoInfo?.videoCodecMime != null && codec.mimeType.equals(videoInfo.videoCodecMime, ignoreCase = true)
+                        val labelStr = stringResource(codec.labelResId)
+                        val displayText = if (isOriginal) stringResource(R.string.codec_original_format, labelStr) else labelStr
+                        Text(displayText)
+                    },
+                    onClick = {
+                        viewModel.updateOptions(options.copy(videoCodec = codec))
+                        codecExpanded = false
+                    }
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
 
     Text(stringResource(R.string.bitrate_options), style = MaterialTheme.typography.titleSmall)
     Text(stringResource(R.string.video_bitrate_options), style = MaterialTheme.typography.bodyMedium)
