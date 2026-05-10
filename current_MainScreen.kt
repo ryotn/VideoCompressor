@@ -29,8 +29,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Tab
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -204,13 +202,10 @@ fun MainScreen(
                 // values whose toString() is always non-empty. LaunchedEffect keeps the parent
                 // state in sync whenever the user clears a direct-input field.
                 var isDirectInputValid by remember { mutableStateOf(true) }
-                var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
                 CompressionOptionsContent(
                     options = options,
                     videoInfo = videoInfo,
                     viewModel = viewModel,
-                    selectedTabIndex = selectedTabIndex,
-                    onTabSelected = { selectedTabIndex = it },
                     onValidityChanged = { isDirectInputValid = it }
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -221,22 +216,12 @@ fun MainScreen(
                     ) {
                         Text(stringResource(R.string.back))
                     }
-                    if (selectedTabIndex < 3) {
-                        Button(
-                            onClick = { selectedTabIndex++ },
-                            modifier = Modifier.weight(1f),
-                            enabled = isDirectInputValid
-                        ) {
-                            Text(stringResource(R.string.next))
-                        }
-                    } else {
-                        Button(
-                            onClick = { viewModel.startCompression() },
-                            modifier = Modifier.weight(1f),
-                            enabled = videoInfo != null && saveDirectoryUri != null && state is CompressionState.Idle && isDirectInputValid
-                        ) {
-                            Text(stringResource(R.string.start_compression))
-                        }
+                    Button(
+                        onClick = { viewModel.startCompression() },
+                        modifier = Modifier.weight(1f),
+                        enabled = videoInfo != null && saveDirectoryUri != null && state is CompressionState.Idle && isDirectInputValid
+                    ) {
+                        Text(stringResource(R.string.start_compression))
                     }
                 }
             }
@@ -358,8 +343,6 @@ private fun CompressionOptionsContent(
     options: CompressionOptions,
     videoInfo: VideoInfo?,
     viewModel: MainViewModel,
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
     onValidityChanged: (Boolean) -> Unit
 ) {
     // Raw text states for direct input fields, reset when the corresponding mode changes
@@ -389,404 +372,7 @@ private fun CompressionOptionsContent(
 
     Text(stringResource(R.string.compression_options), style = MaterialTheme.typography.titleMedium)
 
-    if (videoInfo != null) {
-        val estimatedSizeBytes = options.computeEstimatedSizeBytes(videoInfo)
-        if (estimatedSizeBytes > 0) {
-            val mb = estimatedSizeBytes / (1024.0 * 1024.0)
-            val displaySize = if (mb >= 1024) stringResource(R.string.gb_format, mb / 1024) else stringResource(R.string.mb_format, mb)
-            Text(stringResource(R.string.estimated_size_label, displaySize), style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-    }
-
-    val tabs = remember {
-        listOf(
-            R.string.resolution_options,
-            R.string.bitrate_options,
-            R.string.frame_rate_options,
-            R.string.codec_options
-        )
-    }
-
-    TabRow(
-        selectedTabIndex = selectedTabIndex,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        tabs.forEachIndexed { index, titleResId ->
-            Tab(
-                selected = selectedTabIndex == index,
-                onClick = { onTabSelected(index) },
-                text = { Text(stringResource(titleResId)) }
-            )
-        }
-    }
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    when (selectedTabIndex) {
-        0 -> ResolutionTabContent(
-            options = options,
-            videoInfo = videoInfo,
-            viewModel = viewModel,
-            resolutionDirectWidthText = resolutionDirectWidthText,
-            onResolutionDirectWidthTextChanged = { resolutionDirectWidthText = it },
-            resolutionDirectHeightText = resolutionDirectHeightText,
-            onResolutionDirectHeightTextChanged = { resolutionDirectHeightText = it }
-        )
-        1 -> BitrateTabContent(
-            options = options,
-            viewModel = viewModel,
-            bitrateDirectText = bitrateDirectText,
-            onBitrateDirectTextChanged = { bitrateDirectText = it },
-            audioBitrateDirectText = audioBitrateDirectText,
-            onAudioBitrateDirectTextChanged = { audioBitrateDirectText = it }
-        )
-        2 -> FrameRateTabContent(
-            options = options,
-            videoInfo = videoInfo,
-            viewModel = viewModel,
-            frameRateDirectText = frameRateDirectText,
-            onFrameRateDirectTextChanged = { frameRateDirectText = it }
-        )
-        3 -> CodecTabContent(
-            options = options,
-            videoInfo = videoInfo,
-            viewModel = viewModel
-        )
-    }
-}
-
-@Composable
-private fun ResolutionTabContent(
-    options: CompressionOptions,
-    videoInfo: VideoInfo?,
-    viewModel: MainViewModel,
-    resolutionDirectWidthText: String,
-    onResolutionDirectWidthTextChanged: (String) -> Unit,
-    resolutionDirectHeightText: String,
-    onResolutionDirectHeightTextChanged: (String) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ResolutionMode.entries.forEach { mode ->
-                FilterChip(
-                    selected = options.resolutionMode == mode,
-                    onClick = { viewModel.updateOptions(options.copy(resolutionMode = mode)) },
-                    label = {
-                        Text(
-                            when (mode) {
-                                ResolutionMode.PERCENTAGE -> stringResource(R.string.percentage)
-                                ResolutionMode.DIRECT -> stringResource(R.string.direct)
-                                ResolutionMode.PRESET -> stringResource(R.string.preset)
-                            }
-                        )
-                    }
-                )
-            }
-        }
-
-        when (options.resolutionMode) {
-            ResolutionMode.PERCENTAGE -> {
-                Text(stringResource(R.string.progress_percentage, options.resolutionPercentage))
-                androidx.compose.material3.Slider(
-                    value = options.resolutionPercentage.toFloat(),
-                    onValueChange = { viewModel.updateOptions(options.copy(resolutionPercentage = it.toInt())) },
-                    valueRange = 10f..100f,
-                    steps = 17
-                )
-                computeOutputDimensions(options, videoInfo)?.let { (w, h) ->
-                    Text(stringResource(R.string.output_resolution, w, h), style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            ResolutionMode.DIRECT -> {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = resolutionDirectWidthText,
-                        onValueChange = { v ->
-                            onResolutionDirectWidthTextChanged(v)
-                            v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(resolutionDirectWidth = it)) }
-                        },
-                        isError = resolutionDirectWidthText.isEmpty(),
-                        label = { Text(stringResource(R.string.width_limit)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = resolutionDirectHeightText,
-                        onValueChange = { v ->
-                            onResolutionDirectHeightTextChanged(v)
-                            v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(resolutionDirectHeight = it)) }
-                        },
-                        isError = resolutionDirectHeightText.isEmpty(),
-                        label = { Text(stringResource(R.string.height_limit)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                computeOutputDimensions(options, videoInfo)?.let { (w, h) ->
-                    Text(stringResource(R.string.output_resolution, w, h), style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            ResolutionMode.PRESET -> {
-                val availablePresets = remember(videoInfo) {
-                    ResolutionPreset.entries.distinctBy { computePresetDisplayDimensions(it, videoInfo) }
-                }
-                LaunchedEffect(availablePresets, options.resolutionPreset) {
-                    if (options.resolutionPreset !in availablePresets) {
-                        viewModel.updateOptions(options.copy(resolutionPreset = availablePresets.last()))
-                    }
-                }
-                var expanded by remember { mutableStateOf(false) }
-                Box {
-                    OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text(formatResolutionPresetLabel(options.resolutionPreset, videoInfo))
-                    }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        availablePresets.forEach { preset ->
-                            DropdownMenuItem(
-                                text = { Text(formatResolutionPresetLabel(preset, videoInfo)) },
-                                onClick = {
-                                    viewModel.updateOptions(options.copy(resolutionPreset = preset))
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BitrateTabContent(
-    options: CompressionOptions,
-    viewModel: MainViewModel,
-    bitrateDirectText: String,
-    onBitrateDirectTextChanged: (String) -> Unit,
-    audioBitrateDirectText: String,
-    onAudioBitrateDirectTextChanged: (String) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.video_bitrate_options), style = MaterialTheme.typography.bodyMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BitrateMode.entries.forEach { mode ->
-                FilterChip(
-                    selected = options.bitrateMode == mode,
-                    onClick = { viewModel.updateOptions(options.copy(bitrateMode = mode)) },
-                    label = {
-                        Text(
-                            when (mode) {
-                                BitrateMode.PERCENTAGE -> stringResource(R.string.percentage)
-                                BitrateMode.DIRECT -> stringResource(R.string.direct)
-                                BitrateMode.PRESET -> stringResource(R.string.preset)
-                            }
-                        )
-                    }
-                )
-            }
-        }
-
-        when (options.bitrateMode) {
-            BitrateMode.PERCENTAGE -> {
-                Text(stringResource(R.string.progress_percentage, options.bitratePercentage))
-                androidx.compose.material3.Slider(
-                    value = options.bitratePercentage.toFloat(),
-                    onValueChange = { viewModel.updateOptions(options.copy(bitratePercentage = it.toInt())) },
-                    valueRange = 10f..100f,
-                    steps = 17
-                )
-            }
-            BitrateMode.DIRECT -> {
-                OutlinedTextField(
-                    value = bitrateDirectText,
-                    onValueChange = { v ->
-                        onBitrateDirectTextChanged(v)
-                        v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(bitrateDirectKbps = it)) }
-                    },
-                    isError = bitrateDirectText.isEmpty(),
-                    label = { Text(stringResource(R.string.kbps)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            BitrateMode.PRESET -> {
-                var expanded by remember { mutableStateOf(false) }
-                Box {
-                    OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.preset_label_format, stringResource(options.bitratePreset.labelResId), stringResource(R.string.kbps_format_int, options.bitratePreset.kbps)))
-                    }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        BitratePreset.entries.forEach { preset ->
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.preset_label_format, stringResource(preset.labelResId), stringResource(R.string.kbps_format_int, preset.kbps))) },
-                                onClick = {
-                                    viewModel.updateOptions(options.copy(bitratePreset = preset))
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(stringResource(R.string.audio_bitrate_options), style = MaterialTheme.typography.bodyMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BitrateMode.entries.forEach { mode ->
-                FilterChip(
-                    selected = options.audioBitrateMode == mode && !options.removeAudio,
-                    onClick = { viewModel.updateOptions(options.copy(audioBitrateMode = mode, removeAudio = false)) },
-                    label = {
-                        Text(
-                            when (mode) {
-                                BitrateMode.PERCENTAGE -> stringResource(R.string.percentage)
-                                BitrateMode.DIRECT -> stringResource(R.string.direct)
-                                BitrateMode.PRESET -> stringResource(R.string.preset)
-                            }
-                        )
-                    }
-                )
-            }
-            FilterChip(
-                selected = options.removeAudio,
-                onClick = { viewModel.updateOptions(options.copy(removeAudio = true)) },
-                label = { Text(stringResource(R.string.remove_audio)) }
-            )
-        }
-
-        if (!options.removeAudio) {
-            when (options.audioBitrateMode) {
-                BitrateMode.PERCENTAGE -> {
-                    Text(stringResource(R.string.progress_percentage, options.audioBitratePercentage))
-                    androidx.compose.material3.Slider(
-                        value = options.audioBitratePercentage.toFloat(),
-                        onValueChange = { viewModel.updateOptions(options.copy(audioBitratePercentage = it.toInt())) },
-                        valueRange = 10f..100f,
-                        steps = 17
-                    )
-                }
-                BitrateMode.DIRECT -> {
-                    OutlinedTextField(
-                        value = audioBitrateDirectText,
-                        onValueChange = { v ->
-                            onAudioBitrateDirectTextChanged(v)
-                            v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(audioBitrateDirectKbps = it)) }
-                        },
-                        isError = audioBitrateDirectText.isEmpty(),
-                        label = { Text(stringResource(R.string.kbps)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                BitrateMode.PRESET -> {
-                    var expanded by remember { mutableStateOf(false) }
-                    Box {
-                        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.preset_label_format, stringResource(options.audioBitratePreset.labelResId), stringResource(R.string.kbps_format_int, options.audioBitratePreset.kbps)))
-                        }
-                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                            AudioBitratePreset.entries.forEach { preset ->
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.preset_label_format, stringResource(preset.labelResId), stringResource(R.string.kbps_format_int, preset.kbps))) },
-                                    onClick = {
-                                        viewModel.updateOptions(options.copy(audioBitratePreset = preset))
-                                        expanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FrameRateTabContent(
-    options: CompressionOptions,
-    videoInfo: VideoInfo?,
-    viewModel: MainViewModel,
-    frameRateDirectText: String,
-    onFrameRateDirectTextChanged: (String) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FrameRateMode.entries.forEach { mode ->
-                FilterChip(
-                    selected = options.frameRateMode == mode,
-                    onClick = { viewModel.updateOptions(options.copy(frameRateMode = mode)) },
-                    label = {
-                        Text(
-                            when (mode) {
-                                FrameRateMode.PERCENTAGE -> stringResource(R.string.percentage)
-                                FrameRateMode.DIRECT -> stringResource(R.string.direct)
-                                FrameRateMode.PRESET -> stringResource(R.string.preset)
-                            }
-                        )
-                    }
-                )
-            }
-        }
-
-        when (options.frameRateMode) {
-            FrameRateMode.PERCENTAGE -> {
-                Text(stringResource(R.string.progress_percentage, options.frameRatePercentage))
-                androidx.compose.material3.Slider(
-                    value = options.frameRatePercentage.toFloat(),
-                    onValueChange = { viewModel.updateOptions(options.copy(frameRatePercentage = it.toInt())) },
-                    valueRange = 10f..100f,
-                    steps = 17
-                )
-                if (videoInfo != null && videoInfo.frameRateFps > 0) {
-                    val targetFps = options.computeTargetFrameRateFps(videoInfo.frameRateFps)
-                    Text(stringResource(R.string.output_frame_rate, targetFps), style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            FrameRateMode.DIRECT -> {
-                OutlinedTextField(
-                    value = frameRateDirectText,
-                    onValueChange = { v ->
-                        onFrameRateDirectTextChanged(v)
-                        v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(frameRateDirectFps = it)) }
-                    },
-                    isError = frameRateDirectText.isEmpty(),
-                    label = { Text(stringResource(R.string.fps)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            FrameRateMode.PRESET -> {
-                var expanded by remember { mutableStateOf(false) }
-                Box {
-                    OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.preset_label_format, stringResource(options.frameRatePreset.labelResId), stringResource(R.string.fps_format_int, options.frameRatePreset.fps)))
-                    }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        FrameRatePreset.entries.forEach { preset ->
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.preset_label_format, stringResource(preset.labelResId), stringResource(R.string.fps_format_int, preset.fps))) },
-                                onClick = {
-                                    viewModel.updateOptions(options.copy(frameRatePreset = preset))
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CodecTabContent(
-    options: CompressionOptions,
-    videoInfo: VideoInfo?,
-    viewModel: MainViewModel
-) {
+    Text(stringResource(R.string.codec_options), style = MaterialTheme.typography.titleSmall)
     var codecExpanded by remember { mutableStateOf(false) }
     Box {
         OutlinedButton(onClick = { codecExpanded = true }, modifier = Modifier.fillMaxWidth()) {
@@ -812,7 +398,301 @@ private fun CodecTabContent(
             }
         }
     }
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    Text(stringResource(R.string.bitrate_options), style = MaterialTheme.typography.titleSmall)
+    Text(stringResource(R.string.video_bitrate_options), style = MaterialTheme.typography.bodyMedium)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        BitrateMode.entries.forEach { mode ->
+            FilterChip(
+                selected = options.bitrateMode == mode,
+                onClick = { viewModel.updateOptions(options.copy(bitrateMode = mode)) },
+                label = {
+                    Text(
+                        when (mode) {
+                            BitrateMode.PERCENTAGE -> stringResource(R.string.percentage)
+                            BitrateMode.DIRECT -> stringResource(R.string.direct)
+                            BitrateMode.PRESET -> stringResource(R.string.preset)
+                        }
+                    )
+                }
+            )
+        }
+    }
+
+    when (options.bitrateMode) {
+        BitrateMode.PERCENTAGE -> {
+            Text(stringResource(R.string.progress_percentage, options.bitratePercentage))
+            androidx.compose.material3.Slider(
+                value = options.bitratePercentage.toFloat(),
+                onValueChange = { viewModel.updateOptions(options.copy(bitratePercentage = it.toInt())) },
+                valueRange = 10f..100f,
+                steps = 17
+            )
+        }
+        BitrateMode.DIRECT -> {
+            OutlinedTextField(
+                value = bitrateDirectText,
+                onValueChange = { v ->
+                    bitrateDirectText = v
+                    v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(bitrateDirectKbps = it)) }
+                },
+                isError = bitrateDirectText.isEmpty(),
+                label = { Text(stringResource(R.string.kbps)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        BitrateMode.PRESET -> {
+            var expanded by remember { mutableStateOf(false) }
+            Box {
+                OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.preset_label_format, stringResource(options.bitratePreset.labelResId), stringResource(R.string.kbps_format_int, options.bitratePreset.kbps)))
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    BitratePreset.entries.forEach { preset ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.preset_label_format, stringResource(preset.labelResId), stringResource(R.string.kbps_format_int, preset.kbps))) },
+                            onClick = {
+                                viewModel.updateOptions(options.copy(bitratePreset = preset))
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    Text(stringResource(R.string.audio_bitrate_options), style = MaterialTheme.typography.bodyMedium)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        BitrateMode.entries.forEach { mode ->
+            FilterChip(
+                selected = options.audioBitrateMode == mode && !options.removeAudio,
+                onClick = { viewModel.updateOptions(options.copy(audioBitrateMode = mode, removeAudio = false)) },
+                label = {
+                    Text(
+                        when (mode) {
+                            BitrateMode.PERCENTAGE -> stringResource(R.string.percentage)
+                            BitrateMode.DIRECT -> stringResource(R.string.direct)
+                            BitrateMode.PRESET -> stringResource(R.string.preset)
+                        }
+                    )
+                }
+            )
+        }
+        FilterChip(
+            selected = options.removeAudio,
+            onClick = { viewModel.updateOptions(options.copy(removeAudio = true)) },
+            label = { Text(stringResource(R.string.remove_audio)) }
+        )
+    }
+
+    if (!options.removeAudio) {
+        when (options.audioBitrateMode) {
+            BitrateMode.PERCENTAGE -> {
+                Text(stringResource(R.string.progress_percentage, options.audioBitratePercentage))
+                androidx.compose.material3.Slider(
+                    value = options.audioBitratePercentage.toFloat(),
+                    onValueChange = { viewModel.updateOptions(options.copy(audioBitratePercentage = it.toInt())) },
+                    valueRange = 10f..100f,
+                    steps = 17
+                )
+            }
+            BitrateMode.DIRECT -> {
+                OutlinedTextField(
+                    value = audioBitrateDirectText,
+                    onValueChange = { v ->
+                        audioBitrateDirectText = v
+                        v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(audioBitrateDirectKbps = it)) }
+                    },
+                    isError = audioBitrateDirectText.isEmpty(),
+                    label = { Text(stringResource(R.string.kbps)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            BitrateMode.PRESET -> {
+                var expanded by remember { mutableStateOf(false) }
+                Box {
+                    OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.preset_label_format, stringResource(options.audioBitratePreset.labelResId), stringResource(R.string.kbps_format_int, options.audioBitratePreset.kbps)))
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        AudioBitratePreset.entries.forEach { preset ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.preset_label_format, stringResource(preset.labelResId), stringResource(R.string.kbps_format_int, preset.kbps))) },
+                                onClick = {
+                                    viewModel.updateOptions(options.copy(audioBitratePreset = preset))
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Text(stringResource(R.string.frame_rate_options), style = MaterialTheme.typography.titleSmall)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FrameRateMode.entries.forEach { mode ->
+            FilterChip(
+                selected = options.frameRateMode == mode,
+                onClick = { viewModel.updateOptions(options.copy(frameRateMode = mode)) },
+                label = {
+                    Text(
+                        when (mode) {
+                            FrameRateMode.PERCENTAGE -> stringResource(R.string.percentage)
+                            FrameRateMode.DIRECT -> stringResource(R.string.direct)
+                            FrameRateMode.PRESET -> stringResource(R.string.preset)
+                        }
+                    )
+                }
+            )
+        }
+    }
+
+    when (options.frameRateMode) {
+        FrameRateMode.PERCENTAGE -> {
+            Text(stringResource(R.string.progress_percentage, options.frameRatePercentage))
+            androidx.compose.material3.Slider(
+                value = options.frameRatePercentage.toFloat(),
+                onValueChange = { viewModel.updateOptions(options.copy(frameRatePercentage = it.toInt())) },
+                valueRange = 10f..100f,
+                steps = 17
+            )
+            if (videoInfo != null && videoInfo.frameRateFps > 0) {
+                val targetFps = options.computeTargetFrameRateFps(videoInfo.frameRateFps)
+                Text(stringResource(R.string.output_frame_rate, targetFps), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        FrameRateMode.DIRECT -> {
+            OutlinedTextField(
+                value = frameRateDirectText,
+                onValueChange = { v ->
+                    frameRateDirectText = v
+                    v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(frameRateDirectFps = it)) }
+                },
+                isError = frameRateDirectText.isEmpty(),
+                label = { Text(stringResource(R.string.fps)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        FrameRateMode.PRESET -> {
+            var expanded by remember { mutableStateOf(false) }
+            Box {
+                OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.preset_label_format, stringResource(options.frameRatePreset.labelResId), stringResource(R.string.fps_format_int, options.frameRatePreset.fps)))
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    FrameRatePreset.entries.forEach { preset ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.preset_label_format, stringResource(preset.labelResId), stringResource(R.string.fps_format_int, preset.fps))) },
+                            onClick = {
+                                viewModel.updateOptions(options.copy(frameRatePreset = preset))
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    Text(stringResource(R.string.resolution_options), style = MaterialTheme.typography.titleSmall)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ResolutionMode.entries.forEach { mode ->
+            FilterChip(
+                selected = options.resolutionMode == mode,
+                onClick = { viewModel.updateOptions(options.copy(resolutionMode = mode)) },
+                label = {
+                    Text(
+                        when (mode) {
+                            ResolutionMode.PERCENTAGE -> stringResource(R.string.percentage)
+                            ResolutionMode.DIRECT -> stringResource(R.string.direct)
+                            ResolutionMode.PRESET -> stringResource(R.string.preset)
+                        }
+                    )
+                }
+            )
+        }
+    }
+
+    when (options.resolutionMode) {
+        ResolutionMode.PERCENTAGE -> {
+            Text(stringResource(R.string.progress_percentage, options.resolutionPercentage))
+            androidx.compose.material3.Slider(
+                value = options.resolutionPercentage.toFloat(),
+                onValueChange = { viewModel.updateOptions(options.copy(resolutionPercentage = it.toInt())) },
+                valueRange = 10f..100f,
+                steps = 17
+            )
+            computeOutputDimensions(options, videoInfo)?.let { (w, h) ->
+                Text(stringResource(R.string.output_resolution, w, h), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        ResolutionMode.DIRECT -> {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = resolutionDirectWidthText,
+                    onValueChange = { v ->
+                        resolutionDirectWidthText = v
+                        v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(resolutionDirectWidth = it)) }
+                    },
+                    isError = resolutionDirectWidthText.isEmpty(),
+                    label = { Text(stringResource(R.string.width_limit)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = resolutionDirectHeightText,
+                    onValueChange = { v ->
+                        resolutionDirectHeightText = v
+                        v.toIntOrNull()?.let { viewModel.updateOptions(options.copy(resolutionDirectHeight = it)) }
+                    },
+                    isError = resolutionDirectHeightText.isEmpty(),
+                    label = { Text(stringResource(R.string.height_limit)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            computeOutputDimensions(options, videoInfo)?.let { (w, h) ->
+                Text(stringResource(R.string.output_resolution, w, h), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        ResolutionMode.PRESET -> {
+            val availablePresets = remember(videoInfo) {
+                ResolutionPreset.entries.distinctBy { computePresetDisplayDimensions(it, videoInfo) }
+            }
+            LaunchedEffect(availablePresets, options.resolutionPreset) {
+                if (options.resolutionPreset !in availablePresets) {
+                    viewModel.updateOptions(options.copy(resolutionPreset = availablePresets.last()))
+                }
+            }
+            var expanded by remember { mutableStateOf(false) }
+            Box {
+                OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(formatResolutionPresetLabel(options.resolutionPreset, videoInfo))
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    availablePresets.forEach { preset ->
+                        DropdownMenuItem(
+                            text = { Text(formatResolutionPresetLabel(preset, videoInfo)) },
+                            onClick = {
+                                viewModel.updateOptions(options.copy(resolutionPreset = preset))
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
+
 @Composable
 private fun formatResolutionPresetLabel(preset: ResolutionPreset, videoInfo: VideoInfo?): String {
     val baseLabel = stringResource(preset.labelResId)

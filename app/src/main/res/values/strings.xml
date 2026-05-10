@@ -84,4 +84,5 @@
     <string name="preset_cinema">シネマ</string>
     <string name="preset_standard">標準</string>
     <string name="preset_smooth">なめらか</string>
+    <string name="estimated_size_label">圧縮後のファイルサイズ（予想）: %s</string>
 </resources>
