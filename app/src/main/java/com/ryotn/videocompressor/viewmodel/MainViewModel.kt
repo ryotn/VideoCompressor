@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
@@ -29,6 +30,17 @@ import kotlinx.coroutines.withContext
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences("video_compressor_prefs", Context.MODE_PRIVATE)
+
+    val supportedVideoCodecs: List<VideoCodec> by lazy {
+        val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+        val supportedMimeTypes = codecList.codecInfos
+            .filter { it.isEncoder }
+            .flatMap { it.supportedTypes.toList() }
+            .toSet()
+        VideoCodec.entries.filter { codec ->
+            supportedMimeTypes.any { it.equals(codec.mimeType, ignoreCase = true) }
+        }.ifEmpty { listOf(VideoCodec.H264) }
+    }
 
     private val _videoInfo = MutableStateFlow<VideoInfo?>(null)
     val videoInfo: StateFlow<VideoInfo?> = _videoInfo
@@ -88,16 +100,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _compressionState.value = CompressionState.Idle
 
             // Set default codec if matched
-            info?.videoCodecMime?.let { mime ->
-                val matchingCodec = VideoCodec.entries.find { it.mimeType.equals(mime, ignoreCase = true) }
-                if (matchingCodec != null) {
-                    _compressionOptions.value = _compressionOptions.value.copy(videoCodec = matchingCodec)
-                } else {
-                    _compressionOptions.value = _compressionOptions.value.copy(videoCodec = VideoCodec.H264)
-                }
-            } ?: run {
-                _compressionOptions.value = _compressionOptions.value.copy(videoCodec = VideoCodec.H264)
-            }
+            val matchingCodec = info?.videoCodecMime?.let { mime ->
+                supportedVideoCodecs.find { it.mimeType.equals(mime, ignoreCase = true) }
+            } ?: supportedVideoCodecs.firstOrNull() ?: VideoCodec.H264
+
+            _compressionOptions.value = _compressionOptions.value.copy(videoCodec = matchingCodec)
         }
     }
 
