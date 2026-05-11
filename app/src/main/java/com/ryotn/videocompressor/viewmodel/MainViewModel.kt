@@ -17,7 +17,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.documentfile.provider.DocumentFile
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.ryotn.videocompressor.data.CompressionOptions
+import com.ryotn.videocompressor.data.CompressionMode
 import com.ryotn.videocompressor.data.CompressionState
+import com.ryotn.videocompressor.data.SimpleCompressionOptions
 import com.ryotn.videocompressor.data.VideoInfo
 import com.ryotn.videocompressor.data.VideoCodec
 import com.ryotn.videocompressor.service.CompressionService
@@ -47,6 +49,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _compressionOptions = MutableStateFlow(CompressionOptions())
     val compressionOptions: StateFlow<CompressionOptions> = _compressionOptions
+
+    private val _compressionMode = MutableStateFlow(CompressionMode.SIMPLE)
+    val compressionMode: StateFlow<CompressionMode> = _compressionMode
+
+    private val _simpleOptions = MutableStateFlow(SimpleCompressionOptions())
+    val simpleOptions: StateFlow<SimpleCompressionOptions> = _simpleOptions
 
     private val _saveDirectoryUri = MutableStateFlow(loadSavedDirectoryUri())
     val saveDirectoryUri: StateFlow<Uri?> = _saveDirectoryUri
@@ -205,6 +213,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _compressionOptions.value = options
     }
 
+    fun updateCompressionMode(mode: CompressionMode) {
+        _compressionMode.value = mode
+    }
+
+    fun updateSimpleOptions(options: SimpleCompressionOptions) {
+        _simpleOptions.value = options
+    }
+
     fun updateSaveDirectory(uri: Uri) {
         prefs.edit().putString(KEY_SAVE_DIRECTORY_URI, uri.toString()).apply()
         _saveDirectoryUri.value = uri
@@ -213,7 +229,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun startCompression() {
         val info = _videoInfo.value ?: return
-        val options = _compressionOptions.value
+        val options = when (_compressionMode.value) {
+            CompressionMode.SIMPLE -> {
+                val preferH265 = supportedVideoCodecs.contains(VideoCodec.H265)
+                _simpleOptions.value.toCompressionOptions(info, preferH265)
+            }
+            CompressionMode.ADVANCED -> _compressionOptions.value
+        }
         val saveDirectoryUri = _saveDirectoryUri.value ?: return
         val context = getApplication<Application>()
         val intent = Intent(context, CompressionService::class.java).apply {
