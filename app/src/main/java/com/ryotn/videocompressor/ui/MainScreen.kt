@@ -43,6 +43,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -1143,19 +1144,44 @@ private fun ErrorStatusStepContent(
 private fun CompletedStepContent(
     state: CompressionState.Completed
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(stringResource(R.string.compression_complete), style = MaterialTheme.typography.titleSmall)
-            val originalMb = state.originalSizeBytes / (1024.0 * 1024.0)
-            val outputMb = state.outputSizeBytes / (1024.0 * 1024.0)
-            val originalDisplaySize = if (originalMb >= 1024) stringResource(R.string.gb_format, originalMb / 1024) else stringResource(R.string.mb_format, originalMb)
-            val outputDisplaySize = if (outputMb >= 1024) stringResource(R.string.gb_format, outputMb / 1024) else stringResource(R.string.mb_format, outputMb)
-            Text(stringResource(R.string.original_size_label, originalDisplaySize))
-            Text(stringResource(R.string.compressed_size_label, outputDisplaySize))
-            if (state.originalSizeBytes > 0) {
-                Text(stringResource(R.string.compression_ratio, outputMb / originalMb * 100))
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(160.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.success_circle_mark),
+                    color = Color(0xFF2E7D32),
+                    style = MaterialTheme.typography.displayLarge
+                )
             }
-            Text(stringResource(R.string.save_destination, state.outputPath), style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = stringResource(R.string.compression_complete),
+                textAlign = TextAlign.Center
+            )
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val originalMb = state.originalSizeBytes / (1024.0 * 1024.0)
+                    val outputMb = state.outputSizeBytes / (1024.0 * 1024.0)
+                    val originalDisplaySize = if (originalMb >= 1024) stringResource(R.string.gb_format, originalMb / 1024) else stringResource(R.string.mb_format, originalMb)
+                    val outputDisplaySize = if (outputMb >= 1024) stringResource(R.string.gb_format, outputMb / 1024) else stringResource(R.string.mb_format, outputMb)
+                    Text(stringResource(R.string.original_size_label, originalDisplaySize))
+                    Text(stringResource(R.string.compressed_size_label, outputDisplaySize))
+                    if (state.originalSizeBytes > 0) {
+                        Text(stringResource(R.string.compression_ratio, outputMb / originalMb * 100))
+                    }
+                    Text(stringResource(R.string.save_destination, state.outputPath), style = MaterialTheme.typography.bodySmall)
+                }
+            }
         }
     }
 }
