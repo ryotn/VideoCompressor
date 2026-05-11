@@ -22,6 +22,7 @@
     <string name="fps">fps</string>
     <string name="kbps">kbps</string>
     <string name="compression_progress">圧縮中...</string>
+    <string name="compressing_label">圧縮処理中</string>
     <string name="compression_complete">圧縮完了</string>
     <string name="compression_failed">圧縮失敗</string>
     <string name="notification_channel_name">動画圧縮</string>
