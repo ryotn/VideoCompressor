@@ -1086,68 +1086,55 @@ private fun ProgressStepContent(
             }
         }
         is CompressionState.Failed -> {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    modifier = Modifier.padding(vertical = 48.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.size(160.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.error_cross_mark),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.displayLarge
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.compression_failed),
-                        textAlign = TextAlign.Center
-                    )
-                    if (state.error.isNotBlank()) {
-                        Text(
-                            text = state.error,
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
+            ErrorStatusStepContent(
+                message = stringResource(R.string.compression_failed),
+                detail = state.error.takeIf { it.isNotBlank() }
+            )
         }
         is CompressionState.Cancelled -> {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    modifier = Modifier.padding(vertical = 48.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.size(160.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.error_cross_mark),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.displayLarge
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.compression_cancelled),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
+            ErrorStatusStepContent(message = stringResource(R.string.compression_cancelled))
         }
         else -> {
             Text(stringResource(R.string.compression_waiting))
+        }
+    }
+}
+
+@Composable
+private fun ErrorStatusStepContent(
+    message: String,
+    detail: String? = null
+) {
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(160.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.error_cross_mark),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.displayLarge
+                )
+            }
+            Text(
+                text = message,
+                textAlign = TextAlign.Center
+            )
+            detail?.let {
+                Text(
+                    text = it,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
     }
 }
