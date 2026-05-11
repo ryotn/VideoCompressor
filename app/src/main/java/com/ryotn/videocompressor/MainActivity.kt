@@ -10,9 +10,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -25,9 +30,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.ryotn.videocompressor.ui.MainScreen
 import com.ryotn.videocompressor.service.CompressionService
 import com.ryotn.videocompressor.data.CompressionState
@@ -35,8 +42,7 @@ import com.ryotn.videocompressor.ui.theme.VideoCompressorTheme
 import com.ryotn.videocompressor.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
-    private var showShareIntentBlockedDialog by mutableStateOf(false)
-    private var showInvalidShareIntentDialog by mutableStateOf(false)
+    private var intentHandleCounter by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,9 +53,28 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val vm: MainViewModel = viewModel()
+                    val isVideoSelectionInProgress by vm.isVideoSelectionInProgress.collectAsState()
+                    var showShareIntentBlockedDialog by rememberSaveable { mutableStateOf(false) }
+                    var showInvalidShareIntentDialog by rememberSaveable { mutableStateOf(false) }
+                    var showShareImportProgressDialog by rememberSaveable { mutableStateOf(false) }
 
-                    LaunchedEffect(Unit) {
-                        handleIntent(intent, vm)
+                    LaunchedEffect(intentHandleCounter) {
+                        showShareIntentBlockedDialog = false
+                        showInvalidShareIntentDialog = false
+                        showShareImportProgressDialog = false
+                        handleIntent(
+                            intent = intent,
+                            vm = vm,
+                            onShareIntentBlocked = { showShareIntentBlockedDialog = true },
+                            onInvalidShareIntent = { showInvalidShareIntentDialog = true },
+                            onShareImportStarted = { showShareImportProgressDialog = true }
+                        )
+                    }
+
+                    LaunchedEffect(isVideoSelectionInProgress) {
+                        if (!isVideoSelectionInProgress) {
+                            showShareImportProgressDialog = false
+                        }
                     }
 
                     var permissionsGranted by remember { mutableStateOf(false) }
@@ -159,6 +184,30 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    if (showShareImportProgressDialog) {
+                        Dialog(onDismissRequest = { showShareImportProgressDialog = false }) {
+                            Surface(
+                                shape = MaterialTheme.shapes.large,
+                                color = MaterialTheme.colorScheme.surface
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .width(280.dp)
+                                        .padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.share_video_loading_title),
+                                        style = MaterialTheme.typography.titleLarge
+                                    )
+                                    CircularProgressIndicator()
+                                    Text(stringResource(R.string.share_video_loading_message))
+                                }
+                            }
+                        }
+                    }
+
                     MainScreen(
                         viewModel = vm,
                         onSelectVideo = { videoPickerLauncher.launch(arrayOf("video/*")) },
@@ -172,25 +221,29 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        showShareIntentBlockedDialog = false
-        showInvalidShareIntentDialog = false
-        val vm = ViewModelProvider(this)[MainViewModel::class.java]
-        handleIntent(intent, vm)
+        intentHandleCounter++
     }
 
-    private fun handleIntent(intent: Intent?, vm: MainViewModel) {
+    private fun handleIntent(
+        intent: Intent?,
+        vm: MainViewModel,
+        onShareIntentBlocked: () -> Unit,
+        onInvalidShareIntent: () -> Unit,
+        onShareImportStarted: () -> Unit
+    ) {
         when (val sharedVideoIntent = getSharedVideoIntent(intent)) {
             SharedVideoIntent.None -> Unit
             SharedVideoIntent.InvalidMultiple -> {
-                showInvalidShareIntentDialog = true
+                onInvalidShareIntent()
             }
             is SharedVideoIntent.Valid -> {
                 val compressionState = vm.compressionState.value
                 val isCompressing = compressionState is CompressionState.Preparing ||
                     compressionState is CompressionState.InProgress
                 if (isCompressing) {
-                    showShareIntentBlockedDialog = true
+                    onShareIntentBlocked()
                 } else {
+                    onShareImportStarted()
                     vm.onVideoSelected(sharedVideoIntent.uri)
                 }
             }

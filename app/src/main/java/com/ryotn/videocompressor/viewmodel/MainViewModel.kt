@@ -30,9 +30,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.atomic.AtomicLong
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -71,8 +74,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _compressionState = MutableStateFlow<CompressionState>(CompressionState.Idle)
     val compressionState: StateFlow<CompressionState> = _compressionState
 
+    private val _isVideoSelectionInProgress = MutableStateFlow(false)
+    val isVideoSelectionInProgress: StateFlow<Boolean> = _isVideoSelectionInProgress
+
     private var cachedSharedVideoFile: File? = null
     private var onVideoSelectedJob: Job? = null
+    private val videoSelectionRequestId = AtomicLong(0L)
+    private val sharedVideoCacheMutex = Mutex()
 
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -110,20 +118,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onVideoSelected(uri: Uri) {
         onVideoSelectedJob?.cancel()
+        val requestId = videoSelectionRequestId.incrementAndGet()
         onVideoSelectedJob = viewModelScope.launch {
-            val info = withContext(Dispatchers.IO) {
-                val resolvedUri = prepareSourceUri(uri)
-                extractVideoInfo(resolvedUri)
+            _isVideoSelectionInProgress.value = true
+            try {
+                val info = withContext(Dispatchers.IO) {
+                    val resolvedUri = prepareSourceUri(uri)
+                    extractVideoInfo(resolvedUri)
+                }
+                if (requestId != videoSelectionRequestId.get()) return@launch
+                _videoInfo.value = info
+                _compressionState.value = CompressionState.Idle
+
+                // Set default codec if matched
+                val matchingCodec = info?.videoCodecMime?.let { mime ->
+                    supportedVideoCodecs.find { it.mimeType.equals(mime, ignoreCase = true) }
+                } ?: supportedVideoCodecs.firstOrNull() ?: VideoCodec.H264
+
+                _compressionOptions.value = _compressionOptions.value.copy(videoCodec = matchingCodec)
+            } finally {
+                if (requestId == videoSelectionRequestId.get()) {
+                    _isVideoSelectionInProgress.value = false
+                }
             }
-            _videoInfo.value = info
-            _compressionState.value = CompressionState.Idle
-
-            // Set default codec if matched
-            val matchingCodec = info?.videoCodecMime?.let { mime ->
-                supportedVideoCodecs.find { it.mimeType.equals(mime, ignoreCase = true) }
-            } ?: supportedVideoCodecs.firstOrNull() ?: VideoCodec.H264
-
-            _compressionOptions.value = _compressionOptions.value.copy(videoCodec = matchingCodec)
         }
     }
 
@@ -186,21 +203,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    @Synchronized
-    private fun prepareSourceUri(uri: Uri): Uri {
+    private suspend fun prepareSourceUri(uri: Uri): Uri = sharedVideoCacheMutex.withLock {
         if (!isGooglePhotosUri(uri)) {
-            return uri
+            return@withLock uri
         }
 
         val context = getApplication<Application>()
         val input = runCatching { context.contentResolver.openInputStream(uri) }
             .onFailure { Log.w(tag, "Failed to open shared Google Photos URI. authority=${uri.authority}", it) }
-            .getOrNull() ?: return uri
+            .getOrNull() ?: return@withLock uri
         input.use { source ->
             val sharedDir = File(context.cacheDir, "shared_input")
             if (!sharedDir.exists() && !sharedDir.mkdirs()) {
                 Log.w(tag, "Failed to create shared input cache directory: ${sharedDir.absolutePath}")
-                return uri
+                return@withLock uri
             }
             val extension = resolveFileExtension(uri)
             val tempFile = runCatching {
@@ -211,19 +227,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }.onFailure {
                 Log.w(tag, "Failed to cache shared Google Photos video.", it)
-            }.getOrNull() ?: return uri
+            }.getOrNull() ?: return@withLock uri
             cachedSharedVideoFile?.let { oldFile ->
                 if (oldFile.exists() && !oldFile.delete()) {
                     Log.w(tag, "Failed to delete old shared input cache file: ${oldFile.absolutePath}")
                 }
             }
             cachedSharedVideoFile = tempFile
-            return Uri.fromFile(tempFile)
+            return@withLock Uri.fromFile(tempFile)
         }
     }
 
     private fun isGooglePhotosUri(uri: Uri): Boolean {
-        return uri.authority?.equals("com.google.android.apps.photos.contentprovider", ignoreCase = true) == true
+        return uri.authority?.equals(GOOGLE_PHOTOS_AUTHORITY, ignoreCase = true) == true
     }
 
     private fun resolveFileExtension(uri: Uri): String {
@@ -387,6 +403,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     companion object {
+        private const val GOOGLE_PHOTOS_AUTHORITY = "com.google.android.apps.photos.contentprovider"
         private const val KEY_SAVE_DIRECTORY_URI = "save_directory_uri"
     }
 }
