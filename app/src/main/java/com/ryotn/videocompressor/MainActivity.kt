@@ -176,7 +176,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (isSharedImportInProgress) {
-                        Dialog(onDismissRequest = { }) {
+                        Dialog(onDismissRequest = { vm.cancelSharedVideoImport() }) {
                             Surface(
                                 shape = MaterialTheme.shapes.large,
                                 color = MaterialTheme.colorScheme.surface
@@ -194,6 +194,9 @@ class MainActivity : ComponentActivity() {
                                     )
                                     CircularProgressIndicator()
                                     Text(stringResource(R.string.share_video_loading_message))
+                                    TextButton(onClick = { vm.cancelSharedVideoImport() }) {
+                                        Text(stringResource(R.string.share_video_loading_cancel))
+                                    }
                                 }
                             }
                         }

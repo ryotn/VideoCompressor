@@ -77,6 +77,7 @@
     <string name="invalid_share_video_message">共有できる動画は1件のみです。1つだけ選んで共有してください。</string>
     <string name="share_video_loading_title">共有動画を読み込み中</string>
     <string name="share_video_loading_message">共有された動画を取り込んでいます。しばらくお待ちください。</string>
+    <string name="share_video_loading_cancel">取り込みをキャンセル</string>
     <string name="ok">OK</string>
     <string name="gb_format">%.1f GB</string>
     <string name="mb_format">%.1f MB</string>

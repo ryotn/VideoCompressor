@@ -124,6 +124,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         onVideoSelected(uri)
     }
 
+    fun cancelSharedVideoImport() {
+        onVideoSelectedJob?.cancel()
+        _isSharedImportInProgress.value = false
+    }
+
     fun onVideoSelected(uri: Uri) {
         onVideoSelectedJob?.cancel()
         val requestId = videoSelectionRequestId.incrementAndGet()
