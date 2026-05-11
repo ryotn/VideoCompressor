@@ -1057,22 +1057,31 @@ private fun ProgressStepContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(
-                            progress = { state.progressPercent / 100f },
-                            modifier = Modifier.size(160.dp),
-                            strokeWidth = 8.dp
-                        )
+                        if (state.progressPercent < 1f) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(160.dp),
+                                strokeWidth = 8.dp
+                            )
+                        } else {
+                            CircularProgressIndicator(
+                                progress = { state.progressPercent / 100f },
+                                modifier = Modifier.size(160.dp),
+                                strokeWidth = 8.dp
+                            )
+                        }
                         Text(
                             text = stringResource(R.string.compressing_label),
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
-                    Text(
-                        text = stringResource(R.string.progress_percentage_float, state.progressPercent),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+                    if (state.progressPercent >= 1f) {
+                        Text(
+                            text = stringResource(R.string.progress_percentage_float, state.progressPercent),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
                 }
             }
         }
