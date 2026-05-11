@@ -12,6 +12,8 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.provider.DocumentsContract
+import android.provider.OpenableColumns
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.documentfile.provider.DocumentFile
@@ -24,14 +26,18 @@ import com.ryotn.videocompressor.data.VideoInfo
 import com.ryotn.videocompressor.data.VideoCodec
 import com.ryotn.videocompressor.service.CompressionService
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences("video_compressor_prefs", Context.MODE_PRIVATE)
+    private val tag = "MainViewModel"
 
     val supportedVideoCodecs: List<VideoCodec> by lazy {
         val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
@@ -64,6 +70,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _compressionState = MutableStateFlow<CompressionState>(CompressionState.Idle)
     val compressionState: StateFlow<CompressionState> = _compressionState
+
+    private var cachedSharedVideoFile: File? = null
+    private var onVideoSelectedJob: Job? = null
 
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -100,9 +109,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onVideoSelected(uri: Uri) {
-        viewModelScope.launch {
+        onVideoSelectedJob?.cancel()
+        onVideoSelectedJob = viewModelScope.launch {
             val info = withContext(Dispatchers.IO) {
-                extractVideoInfo(uri)
+                val resolvedUri = prepareSourceUri(uri)
+                extractVideoInfo(resolvedUri)
             }
             _videoInfo.value = info
             _compressionState.value = CompressionState.Idle
@@ -123,15 +134,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             retriever.setDataSource(context, uri)
             var displayName = "video.mp4"
             var sizeBytes = 0L
+            if (uri.scheme == "file") {
+                uri.path?.let { path ->
+                    val file = File(path)
+                    if (file.exists()) {
+                        displayName = file.name
+                        sizeBytes = file.length()
+                    }
+                }
+            }
             context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
                 if (cursor.moveToFirst()) {
-                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                     if (nameIndex >= 0) {
-                        displayName = cursor.getString(nameIndex) ?: "video.mp4"
+                        displayName = cursor.getString(nameIndex) ?: displayName
                     }
-                    val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
                     if (sizeIndex >= 0) {
-                        sizeBytes = cursor.getLong(sizeIndex)
+                        val queriedSize = cursor.getLong(sizeIndex)
+                        if (queriedSize > 0L) {
+                            sizeBytes = queriedSize
+                        }
                     }
                 }
             }
@@ -160,6 +183,57 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             VideoInfo(uri, displayName, sizeBytes, durationMs, displayWidth, displayHeight, bitrate, audioBitrateBps, frameRateFps, videoCodecMime)
         } catch (e: Exception) {
             null
+        }
+    }
+
+    @Synchronized
+    private fun prepareSourceUri(uri: Uri): Uri {
+        if (!isGooglePhotosUri(uri)) {
+            return uri
+        }
+
+        val context = getApplication<Application>()
+        val input = runCatching { context.contentResolver.openInputStream(uri) }
+            .onFailure { Log.w(tag, "Failed to open shared Google Photos URI. authority=${uri.authority}", it) }
+            .getOrNull() ?: return uri
+        input.use { source ->
+            val sharedDir = File(context.cacheDir, "shared_input")
+            if (!sharedDir.exists() && !sharedDir.mkdirs()) {
+                Log.w(tag, "Failed to create shared input cache directory: ${sharedDir.absolutePath}")
+                return uri
+            }
+            val extension = resolveFileExtension(uri)
+            val tempFile = runCatching {
+                File.createTempFile("shared_video_", extension, sharedDir).also { file ->
+                    FileOutputStream(file).use { output ->
+                        source.copyTo(output)
+                    }
+                }
+            }.onFailure {
+                Log.w(tag, "Failed to cache shared Google Photos video.", it)
+            }.getOrNull() ?: return uri
+            cachedSharedVideoFile?.let { oldFile ->
+                if (oldFile.exists() && !oldFile.delete()) {
+                    Log.w(tag, "Failed to delete old shared input cache file: ${oldFile.absolutePath}")
+                }
+            }
+            cachedSharedVideoFile = tempFile
+            return Uri.fromFile(tempFile)
+        }
+    }
+
+    private fun isGooglePhotosUri(uri: Uri): Boolean {
+        return uri.authority?.equals("com.google.android.apps.photos.contentprovider", ignoreCase = true) == true
+    }
+
+    private fun resolveFileExtension(uri: Uri): String {
+        val context = getApplication<Application>()
+        val mimeType = context.contentResolver.getType(uri)
+        return when {
+            mimeType.isNullOrBlank() -> ".mp4"
+            mimeType.equals("video/mp4", ignoreCase = true) -> ".mp4"
+            mimeType.equals("video/quicktime", ignoreCase = true) -> ".mov"
+            else -> ".mp4"
         }
     }
 
@@ -285,6 +359,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         LocalBroadcastManager.getInstance(getApplication()).unregisterReceiver(broadcastReceiver)
+        cachedSharedVideoFile?.let { file ->
+            if (file.exists() && !file.delete()) {
+                Log.w(tag, "Failed to delete shared input cache file on clear: ${file.absolutePath}")
+            }
+        }
     }
 
     private fun loadSavedDirectoryUri(): Uri? {
