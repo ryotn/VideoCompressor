@@ -30,10 +30,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ryotn.videocompressor.ui.MainScreen
 import com.ryotn.videocompressor.service.CompressionService
+import com.ryotn.videocompressor.data.CompressionState
 import com.ryotn.videocompressor.ui.theme.VideoCompressorTheme
 import com.ryotn.videocompressor.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
+    private var showShareIntentBlockedDialog by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -129,6 +132,19 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    if (showShareIntentBlockedDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showShareIntentBlockedDialog = false },
+                            title = { Text(stringResource(R.string.share_video_blocked_title)) },
+                            text = { Text(stringResource(R.string.share_video_blocked_message)) },
+                            confirmButton = {
+                                TextButton(onClick = { showShareIntentBlockedDialog = false }) {
+                                    Text(stringResource(R.string.ok))
+                                }
+                            }
+                        )
+                    }
+
                     MainScreen(
                         viewModel = vm,
                         onSelectVideo = { videoPickerLauncher.launch(arrayOf("video/*")) },
@@ -147,6 +163,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?, vm: MainViewModel) {
+        val sharedVideoUri = getSharedVideoUri(intent)
+        if (sharedVideoUri != null) {
+            val isCompressing = vm.compressionState.value is CompressionState.Preparing ||
+                vm.compressionState.value is CompressionState.InProgress
+            if (isCompressing) {
+                showShareIntentBlockedDialog = true
+            } else {
+                vm.onVideoSelected(sharedVideoUri)
+            }
+        }
+
         if (intent?.getBooleanExtra("show_completion", false) == true) {
             val outputPath = intent.getStringExtra(CompressionService.EXTRA_OUTPUT_PATH) ?: ""
             val originalSize = intent.getLongExtra(CompressionService.EXTRA_ORIGINAL_SIZE, 0L)
@@ -157,5 +184,22 @@ class MainActivity : ComponentActivity() {
             // Remove the flag so it doesn't trigger again on rotation, etc.
             intent.removeExtra("show_completion")
         }
+    }
+
+    private fun getSharedVideoUri(intent: Intent?): Uri? {
+        if (intent?.action != Intent.ACTION_SEND) return null
+        if (intent.type?.startsWith("video/") != true) return null
+
+        val fromExtra = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(Intent.EXTRA_STREAM)
+        }
+        if (fromExtra != null) return fromExtra
+
+        val clipData = intent.clipData ?: return null
+        if (clipData.itemCount != 1) return null
+        return clipData.getItemAt(0).uri
     }
 }
