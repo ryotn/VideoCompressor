@@ -1100,7 +1100,7 @@ private fun ProgressStepContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "✕",
+                            text = stringResource(R.string.error_cross_mark),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.displayLarge
                         )
@@ -1134,7 +1134,7 @@ private fun ProgressStepContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "✕",
+                            text = stringResource(R.string.error_cross_mark),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.displayLarge
                         )
