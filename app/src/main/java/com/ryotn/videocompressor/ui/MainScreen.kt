@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -23,6 +24,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -39,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -59,6 +62,7 @@ import com.ryotn.videocompressor.data.ResolutionPreset
 import com.ryotn.videocompressor.data.SimpleCompressionOptions
 import com.ryotn.videocompressor.data.VideoInfo
 import com.ryotn.videocompressor.data.VideoCodec
+import com.ryotn.videocompressor.ui.theme.SuccessGreen
 import com.ryotn.videocompressor.viewmodel.MainViewModel
 
 private enum class ScreenStep {
@@ -1023,32 +1027,73 @@ private fun ProgressStepContent(
 ) {
     when (state) {
         is CompressionState.Preparing -> {
-            Text(stringResource(R.string.preparing_compression))
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        }
-        is CompressionState.InProgress -> {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.compression_progress))
-                LinearProgressIndicator(
-                    progress = { state.progressPercent / 100f },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Text(stringResource(R.string.progress_percentage_float, state.progressPercent))
-            }
-        }
-        is CompressionState.Failed -> {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 48.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(stringResource(R.string.compression_failed), style = MaterialTheme.typography.titleSmall)
-                    Text(state.error, style = MaterialTheme.typography.bodySmall)
+                Box(contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(160.dp),
+                        strokeWidth = 8.dp
+                    )
+                    Text(
+                        text = stringResource(R.string.compressing_label),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
         }
+        is CompressionState.InProgress -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 48.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (state.progressPercent < 1f) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(160.dp),
+                                strokeWidth = 8.dp
+                            )
+                        } else {
+                            CircularProgressIndicator(
+                                progress = { state.progressPercent / 100f },
+                                modifier = Modifier.size(160.dp),
+                                strokeWidth = 8.dp
+                            )
+                        }
+                        Text(
+                            text = stringResource(R.string.compressing_label),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    if (state.progressPercent >= 1f) {
+                        Text(
+                            text = stringResource(R.string.progress_percentage_float, state.progressPercent),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
+        }
+        is CompressionState.Failed -> {
+            ErrorStatusStepContent(
+                message = stringResource(R.string.compression_failed),
+                detail = state.error.takeIf { it.isNotBlank() }
+            )
+        }
         is CompressionState.Cancelled -> {
-            Text(stringResource(R.string.compression_cancelled))
+            ErrorStatusStepContent(message = stringResource(R.string.compression_cancelled))
         }
         else -> {
             Text(stringResource(R.string.compression_waiting))
@@ -1057,22 +1102,86 @@ private fun ProgressStepContent(
 }
 
 @Composable
+private fun ErrorStatusStepContent(
+    message: String,
+    detail: String? = null
+) {
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(160.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.error_cross_mark),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.displayLarge
+                )
+            }
+            Text(
+                text = message,
+                textAlign = TextAlign.Center
+            )
+            detail?.let {
+                Text(
+                    text = it,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun CompletedStepContent(
     state: CompressionState.Completed
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(stringResource(R.string.compression_complete), style = MaterialTheme.typography.titleSmall)
-            val originalMb = state.originalSizeBytes / (1024.0 * 1024.0)
-            val outputMb = state.outputSizeBytes / (1024.0 * 1024.0)
-            val originalDisplaySize = if (originalMb >= 1024) stringResource(R.string.gb_format, originalMb / 1024) else stringResource(R.string.mb_format, originalMb)
-            val outputDisplaySize = if (outputMb >= 1024) stringResource(R.string.gb_format, outputMb / 1024) else stringResource(R.string.mb_format, outputMb)
-            Text(stringResource(R.string.original_size_label, originalDisplaySize))
-            Text(stringResource(R.string.compressed_size_label, outputDisplaySize))
-            if (state.originalSizeBytes > 0) {
-                Text(stringResource(R.string.compression_ratio, outputMb / originalMb * 100))
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(160.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.success_circle_mark),
+                    color = SuccessGreen,
+                    style = MaterialTheme.typography.displayLarge
+                )
             }
-            Text(stringResource(R.string.save_destination, state.outputPath), style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = stringResource(R.string.compression_complete),
+                textAlign = TextAlign.Center
+            )
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val originalMb = state.originalSizeBytes / (1024.0 * 1024.0)
+                    val outputMb = state.outputSizeBytes / (1024.0 * 1024.0)
+                    val originalDisplaySize = if (originalMb >= 1024) stringResource(R.string.gb_format, originalMb / 1024) else stringResource(R.string.mb_format, originalMb)
+                    val outputDisplaySize = if (outputMb >= 1024) stringResource(R.string.gb_format, outputMb / 1024) else stringResource(R.string.mb_format, outputMb)
+                    Text(stringResource(R.string.original_size_label, originalDisplaySize))
+                    Text(stringResource(R.string.compressed_size_label, outputDisplaySize))
+                    if (state.originalSizeBytes > 0) {
+                        Text(stringResource(R.string.compression_ratio, outputMb / originalMb * 100))
+                    }
+                    Text(stringResource(R.string.save_destination, state.outputPath), style = MaterialTheme.typography.bodySmall)
+                }
+            }
         }
     }
 }

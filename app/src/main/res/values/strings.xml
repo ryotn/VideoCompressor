@@ -22,6 +22,7 @@
     <string name="fps">fps</string>
     <string name="kbps">kbps</string>
     <string name="compression_progress">圧縮中...</string>
+    <string name="compressing_label">圧縮処理中</string>
     <string name="compression_complete">圧縮完了</string>
     <string name="compression_failed">圧縮失敗</string>
     <string name="notification_channel_name">動画圧縮</string>
@@ -50,6 +51,8 @@
     <string name="preparing_compression">圧縮準備中...</string>
     <string name="back_to_options">オプションへ戻る</string>
     <string name="compression_cancelled">圧縮がキャンセルされました</string>
+    <string name="error_cross_mark">✕</string>
+    <string name="success_circle_mark">✓</string>
     <string name="compression_waiting">圧縮待機中</string>
     <string name="close">閉じる</string>
     <string name="exit_app_title">確認</string>
