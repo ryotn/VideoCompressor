@@ -125,7 +125,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * the import was rejected; returns true if the import was started.
      */
     fun onSharedVideoSelected(uri: Uri): Boolean {
-        if (_compressionState.value.isActive) return false
+        if (_compressionState.value.isActive || CompressionService.isRunning) return false
         _isSharedImportInProgress.value = true
         onVideoSelected(uri)
         return true

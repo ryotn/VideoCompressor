@@ -24,6 +24,8 @@ import java.io.FileOutputStream
 class CompressionService : Service() {
 
     companion object {
+        @Volatile var isRunning = false
+
         const val ACTION_START = "com.ryotn.videocompressor.ACTION_START"
         const val ACTION_CANCEL = "com.ryotn.videocompressor.ACTION_CANCEL"
         const val EXTRA_SOURCE_URI = "source_uri"
@@ -56,6 +58,7 @@ class CompressionService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
         createNotificationChannel()
     }
 
@@ -306,6 +309,7 @@ class CompressionService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        isRunning = false
         transcoder?.isCancelled = true
     }
 }
