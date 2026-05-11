@@ -36,6 +36,7 @@ import com.ryotn.videocompressor.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
     private var showShareIntentBlockedDialog by mutableStateOf(false)
+    private var showInvalidShareIntentDialog by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -145,6 +146,19 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    if (showInvalidShareIntentDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showInvalidShareIntentDialog = false },
+                            title = { Text(stringResource(R.string.invalid_share_video_title)) },
+                            text = { Text(stringResource(R.string.invalid_share_video_message)) },
+                            confirmButton = {
+                                TextButton(onClick = { showInvalidShareIntentDialog = false }) {
+                                    Text(stringResource(R.string.ok))
+                                }
+                            }
+                        )
+                    }
+
                     MainScreen(
                         viewModel = vm,
                         onSelectVideo = { videoPickerLauncher.launch(arrayOf("video/*")) },
@@ -158,19 +172,27 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        showShareIntentBlockedDialog = false
+        showInvalidShareIntentDialog = false
         val vm = ViewModelProvider(this)[MainViewModel::class.java]
         handleIntent(intent, vm)
     }
 
     private fun handleIntent(intent: Intent?, vm: MainViewModel) {
-        val sharedVideoUri = getSharedVideoUri(intent)
-        if (sharedVideoUri != null) {
-            val isCompressing = vm.compressionState.value is CompressionState.Preparing ||
-                vm.compressionState.value is CompressionState.InProgress
-            if (isCompressing) {
-                showShareIntentBlockedDialog = true
-            } else {
-                vm.onVideoSelected(sharedVideoUri)
+        when (val sharedVideoIntent = getSharedVideoIntent(intent)) {
+            SharedVideoIntent.None -> Unit
+            SharedVideoIntent.InvalidMultiple -> {
+                showInvalidShareIntentDialog = true
+            }
+            is SharedVideoIntent.Valid -> {
+                val compressionState = vm.compressionState.value
+                val isCompressing = compressionState is CompressionState.Preparing ||
+                    compressionState is CompressionState.InProgress
+                if (isCompressing) {
+                    showShareIntentBlockedDialog = true
+                } else {
+                    vm.onVideoSelected(sharedVideoIntent.uri)
+                }
             }
         }
 
@@ -186,9 +208,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun getSharedVideoUri(intent: Intent?): Uri? {
-        if (intent?.action != Intent.ACTION_SEND) return null
-        if (intent.type?.startsWith("video/") != true) return null
+    private fun getSharedVideoIntent(intent: Intent?): SharedVideoIntent {
+        if (intent?.action != Intent.ACTION_SEND) return SharedVideoIntent.None
+        if (intent.type?.startsWith("video/") != true) return SharedVideoIntent.None
 
         val fromExtra = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
@@ -196,10 +218,16 @@ class MainActivity : ComponentActivity() {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra(Intent.EXTRA_STREAM)
         }
-        if (fromExtra != null) return fromExtra
+        if (fromExtra != null) return SharedVideoIntent.Valid(fromExtra)
 
-        val clipData = intent.clipData ?: return null
-        if (clipData.itemCount != 1) return null
-        return clipData.getItemAt(0).uri
+        val clipData = intent.clipData ?: return SharedVideoIntent.None
+        if (clipData.itemCount != 1) return SharedVideoIntent.InvalidMultiple
+        return clipData.getItemAt(0).uri?.let { SharedVideoIntent.Valid(it) } ?: SharedVideoIntent.None
+    }
+
+    private sealed interface SharedVideoIntent {
+        data object None : SharedVideoIntent
+        data object InvalidMultiple : SharedVideoIntent
+        data class Valid(val uri: Uri) : SharedVideoIntent
     }
 }
