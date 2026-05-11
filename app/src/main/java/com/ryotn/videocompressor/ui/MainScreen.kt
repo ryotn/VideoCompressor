@@ -43,7 +43,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,6 +62,7 @@ import com.ryotn.videocompressor.data.ResolutionPreset
 import com.ryotn.videocompressor.data.SimpleCompressionOptions
 import com.ryotn.videocompressor.data.VideoInfo
 import com.ryotn.videocompressor.data.VideoCodec
+import com.ryotn.videocompressor.ui.theme.SuccessGreen
 import com.ryotn.videocompressor.viewmodel.MainViewModel
 
 private enum class ScreenStep {
@@ -1159,7 +1159,7 @@ private fun CompletedStepContent(
             ) {
                 Text(
                     text = stringResource(R.string.success_circle_mark),
-                    color = Color(0xFF2E7D32),
+                    color = SuccessGreen,
                     style = MaterialTheme.typography.displayLarge
                 )
             }
