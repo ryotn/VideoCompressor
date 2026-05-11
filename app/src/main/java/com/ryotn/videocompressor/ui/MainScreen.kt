@@ -1086,18 +1086,65 @@ private fun ProgressStepContent(
             }
         }
         is CompressionState.Failed -> {
-            Card(
+            Box(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                contentAlignment = Alignment.Center
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(stringResource(R.string.compression_failed), style = MaterialTheme.typography.titleSmall)
-                    Text(state.error, style = MaterialTheme.typography.bodySmall)
+                Column(
+                    modifier = Modifier.padding(vertical = 48.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.size(160.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "✕",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.displayLarge
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.compression_failed),
+                        textAlign = TextAlign.Center
+                    )
+                    if (state.error.isNotBlank()) {
+                        Text(
+                            text = state.error,
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
         is CompressionState.Cancelled -> {
-            Text(stringResource(R.string.compression_cancelled))
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    modifier = Modifier.padding(vertical = 48.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.size(160.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "✕",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.displayLarge
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.compression_cancelled),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         }
         else -> {
             Text(stringResource(R.string.compression_waiting))
