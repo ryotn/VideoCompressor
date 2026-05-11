@@ -8,3 +8,6 @@ sealed class CompressionState {
     data class Failed(val error: String) : CompressionState()
     object Cancelled : CompressionState()
 }
+
+val CompressionState.isActive: Boolean
+    get() = this is CompressionState.Preparing || this is CompressionState.InProgress

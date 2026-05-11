@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.ryotn.videocompressor.ui.MainScreen
 import com.ryotn.videocompressor.service.CompressionService
-import com.ryotn.videocompressor.data.CompressionState
 import com.ryotn.videocompressor.ui.theme.VideoCompressorTheme
 import com.ryotn.videocompressor.viewmodel.MainViewModel
 
@@ -230,13 +229,9 @@ class MainActivity : ComponentActivity() {
                 onInvalidShareIntent()
             }
             is SharedVideoIntent.Valid -> {
-                val compressionState = vm.compressionState.value
-                val isCompressing = compressionState is CompressionState.Preparing ||
-                    compressionState is CompressionState.InProgress
-                if (isCompressing) {
+                val started = vm.onSharedVideoSelected(sharedVideoIntent.uri)
+                if (!started) {
                     onShareIntentBlocked()
-                } else {
-                    vm.onSharedVideoSelected(sharedVideoIntent.uri)
                 }
             }
         }

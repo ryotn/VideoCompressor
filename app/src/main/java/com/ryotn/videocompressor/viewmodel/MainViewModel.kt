@@ -21,6 +21,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.ryotn.videocompressor.data.CompressionOptions
 import com.ryotn.videocompressor.data.CompressionMode
 import com.ryotn.videocompressor.data.CompressionState
+import com.ryotn.videocompressor.data.isActive
 import com.ryotn.videocompressor.data.SimpleCompressionOptions
 import com.ryotn.videocompressor.data.VideoInfo
 import com.ryotn.videocompressor.data.VideoCodec
@@ -119,9 +120,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         LocalBroadcastManager.getInstance(application).registerReceiver(broadcastReceiver, filter)
     }
 
-    fun onSharedVideoSelected(uri: Uri) {
+    /**
+     * Starts importing a shared video. Returns false if compression is currently active and
+     * the import was rejected; returns true if the import was started.
+     */
+    fun onSharedVideoSelected(uri: Uri): Boolean {
+        if (_compressionState.value.isActive) return false
         _isSharedImportInProgress.value = true
         onVideoSelected(uri)
+        return true
     }
 
     fun cancelSharedVideoImport() {
@@ -141,7 +148,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 if (requestId != videoSelectionRequestId.get()) return@launch
                 _videoInfo.value = info
-                _compressionState.value = CompressionState.Idle
+                // Do not reset compressionState if compression is already running
+                if (!_compressionState.value.isActive) {
+                    _compressionState.value = CompressionState.Idle
+                }
 
                 // Set default codec if matched
                 val matchingCodec = info?.videoCodecMime?.let { mime ->
