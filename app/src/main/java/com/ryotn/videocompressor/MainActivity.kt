@@ -53,28 +53,19 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val vm: MainViewModel = viewModel()
-                    val isVideoSelectionInProgress by vm.isVideoSelectionInProgress.collectAsState()
+                    val isSharedImportInProgress by vm.isSharedImportInProgress.collectAsState()
                     var showShareIntentBlockedDialog by rememberSaveable { mutableStateOf(false) }
                     var showInvalidShareIntentDialog by rememberSaveable { mutableStateOf(false) }
-                    var showShareImportProgressDialog by rememberSaveable { mutableStateOf(false) }
 
                     LaunchedEffect(intentHandleCounter) {
                         showShareIntentBlockedDialog = false
                         showInvalidShareIntentDialog = false
-                        showShareImportProgressDialog = false
                         handleIntent(
                             intent = intent,
                             vm = vm,
                             onShareIntentBlocked = { showShareIntentBlockedDialog = true },
-                            onInvalidShareIntent = { showInvalidShareIntentDialog = true },
-                            onShareImportStarted = { showShareImportProgressDialog = true }
+                            onInvalidShareIntent = { showInvalidShareIntentDialog = true }
                         )
-                    }
-
-                    LaunchedEffect(isVideoSelectionInProgress) {
-                        if (!isVideoSelectionInProgress) {
-                            showShareImportProgressDialog = false
-                        }
                     }
 
                     var permissionsGranted by remember { mutableStateOf(false) }
@@ -184,8 +175,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    if (showShareImportProgressDialog) {
-                        Dialog(onDismissRequest = { showShareImportProgressDialog = false }) {
+                    if (isSharedImportInProgress) {
+                        Dialog(onDismissRequest = { }) {
                             Surface(
                                 shape = MaterialTheme.shapes.large,
                                 color = MaterialTheme.colorScheme.surface
@@ -228,8 +219,7 @@ class MainActivity : ComponentActivity() {
         intent: Intent?,
         vm: MainViewModel,
         onShareIntentBlocked: () -> Unit,
-        onInvalidShareIntent: () -> Unit,
-        onShareImportStarted: () -> Unit
+        onInvalidShareIntent: () -> Unit
     ) {
         when (val sharedVideoIntent = getSharedVideoIntent(intent)) {
             SharedVideoIntent.None -> Unit
@@ -243,8 +233,7 @@ class MainActivity : ComponentActivity() {
                 if (isCompressing) {
                     onShareIntentBlocked()
                 } else {
-                    onShareImportStarted()
-                    vm.onVideoSelected(sharedVideoIntent.uri)
+                    vm.onSharedVideoSelected(sharedVideoIntent.uri)
                 }
             }
         }

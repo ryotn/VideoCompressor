@@ -77,6 +77,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isVideoSelectionInProgress = MutableStateFlow(false)
     val isVideoSelectionInProgress: StateFlow<Boolean> = _isVideoSelectionInProgress
 
+    private val _isSharedImportInProgress = MutableStateFlow(false)
+    val isSharedImportInProgress: StateFlow<Boolean> = _isSharedImportInProgress
+
     private var cachedSharedVideoFile: File? = null
     private var onVideoSelectedJob: Job? = null
     private val videoSelectionRequestId = AtomicLong(0L)
@@ -116,6 +119,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         LocalBroadcastManager.getInstance(application).registerReceiver(broadcastReceiver, filter)
     }
 
+    fun onSharedVideoSelected(uri: Uri) {
+        _isSharedImportInProgress.value = true
+        onVideoSelected(uri)
+    }
+
     fun onVideoSelected(uri: Uri) {
         onVideoSelectedJob?.cancel()
         val requestId = videoSelectionRequestId.incrementAndGet()
@@ -139,6 +147,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } finally {
                 if (requestId == videoSelectionRequestId.get()) {
                     _isVideoSelectionInProgress.value = false
+                    _isSharedImportInProgress.value = false
                 }
             }
         }
