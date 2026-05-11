@@ -10,9 +10,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -25,15 +30,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.ryotn.videocompressor.ui.MainScreen
 import com.ryotn.videocompressor.service.CompressionService
 import com.ryotn.videocompressor.ui.theme.VideoCompressorTheme
 import com.ryotn.videocompressor.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
+    private var intentHandleCounter by mutableStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -43,9 +52,19 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val vm: MainViewModel = viewModel()
+                    val isSharedImportInProgress by vm.isSharedImportInProgress.collectAsState()
+                    var showShareIntentBlockedDialog by rememberSaveable { mutableStateOf(false) }
+                    var showInvalidShareIntentDialog by rememberSaveable { mutableStateOf(false) }
 
-                    LaunchedEffect(Unit) {
-                        handleIntent(intent, vm)
+                    LaunchedEffect(intentHandleCounter) {
+                        showShareIntentBlockedDialog = false
+                        showInvalidShareIntentDialog = false
+                        handleIntent(
+                            intent = intent,
+                            vm = vm,
+                            onShareIntentBlocked = { showShareIntentBlockedDialog = true },
+                            onInvalidShareIntent = { showInvalidShareIntentDialog = true }
+                        )
                     }
 
                     var permissionsGranted by remember { mutableStateOf(false) }
@@ -129,6 +148,59 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    if (showShareIntentBlockedDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showShareIntentBlockedDialog = false },
+                            title = { Text(stringResource(R.string.share_video_blocked_title)) },
+                            text = { Text(stringResource(R.string.share_video_blocked_message)) },
+                            confirmButton = {
+                                TextButton(onClick = { showShareIntentBlockedDialog = false }) {
+                                    Text(stringResource(R.string.ok))
+                                }
+                            }
+                        )
+                    }
+
+                    if (showInvalidShareIntentDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showInvalidShareIntentDialog = false },
+                            title = { Text(stringResource(R.string.invalid_share_video_title)) },
+                            text = { Text(stringResource(R.string.invalid_share_video_message)) },
+                            confirmButton = {
+                                TextButton(onClick = { showInvalidShareIntentDialog = false }) {
+                                    Text(stringResource(R.string.ok))
+                                }
+                            }
+                        )
+                    }
+
+                    if (isSharedImportInProgress) {
+                        Dialog(onDismissRequest = { vm.cancelSharedVideoImport() }) {
+                            Surface(
+                                shape = MaterialTheme.shapes.large,
+                                color = MaterialTheme.colorScheme.surface
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .width(280.dp)
+                                        .padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.share_video_loading_title),
+                                        style = MaterialTheme.typography.titleLarge
+                                    )
+                                    CircularProgressIndicator()
+                                    Text(stringResource(R.string.share_video_loading_message))
+                                    TextButton(onClick = { vm.cancelSharedVideoImport() }) {
+                                        Text(stringResource(R.string.share_video_loading_cancel))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     MainScreen(
                         viewModel = vm,
                         onSelectVideo = { videoPickerLauncher.launch(arrayOf("video/*")) },
@@ -142,11 +214,28 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val vm = ViewModelProvider(this)[MainViewModel::class.java]
-        handleIntent(intent, vm)
+        intentHandleCounter++
     }
 
-    private fun handleIntent(intent: Intent?, vm: MainViewModel) {
+    private fun handleIntent(
+        intent: Intent?,
+        vm: MainViewModel,
+        onShareIntentBlocked: () -> Unit,
+        onInvalidShareIntent: () -> Unit
+    ) {
+        when (val sharedVideoIntent = getSharedVideoIntent(intent)) {
+            SharedVideoIntent.None -> Unit
+            SharedVideoIntent.InvalidMultiple -> {
+                onInvalidShareIntent()
+            }
+            is SharedVideoIntent.Valid -> {
+                val started = vm.onSharedVideoSelected(sharedVideoIntent.uri)
+                if (!started) {
+                    onShareIntentBlocked()
+                }
+            }
+        }
+
         if (intent?.getBooleanExtra("show_completion", false) == true) {
             val outputPath = intent.getStringExtra(CompressionService.EXTRA_OUTPUT_PATH) ?: ""
             val originalSize = intent.getLongExtra(CompressionService.EXTRA_ORIGINAL_SIZE, 0L)
@@ -157,5 +246,28 @@ class MainActivity : ComponentActivity() {
             // Remove the flag so it doesn't trigger again on rotation, etc.
             intent.removeExtra("show_completion")
         }
+    }
+
+    private fun getSharedVideoIntent(intent: Intent?): SharedVideoIntent {
+        if (intent?.action != Intent.ACTION_SEND) return SharedVideoIntent.None
+        if (intent.type?.startsWith("video/") != true) return SharedVideoIntent.None
+
+        val fromExtra = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(Intent.EXTRA_STREAM)
+        }
+        if (fromExtra != null) return SharedVideoIntent.Valid(fromExtra)
+
+        val clipData = intent.clipData ?: return SharedVideoIntent.None
+        if (clipData.itemCount != 1) return SharedVideoIntent.InvalidMultiple
+        return clipData.getItemAt(0).uri?.let { SharedVideoIntent.Valid(it) } ?: SharedVideoIntent.None
+    }
+
+    private sealed interface SharedVideoIntent {
+        data object None : SharedVideoIntent
+        data object InvalidMultiple : SharedVideoIntent
+        data class Valid(val uri: Uri) : SharedVideoIntent
     }
 }
